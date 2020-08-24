@@ -1,6 +1,6 @@
 #' RHtests_stepsize
 #' stepsize will not alter TP2, only delte non-significant record.
-#' 
+#'
 #' @export
 RHtests_stepsize <- function(data = NULL, data.ref = NULL, TP2,
     has_ref = !is.null(data.ref),
@@ -9,6 +9,8 @@ RHtests_stepsize <- function(data = NULL, data.ref = NULL, TP2,
     RHtests_read(data, data.ref)
     # has_ref = !is.null(data.ref)
     FUN_step <- if (has_ref) StepSize.wRef else StepSize
+
+    if (nrow(TP2) == 0) return(NULL)
     r   <- FUN_step(InCs = TP2, output = prefix, is_plot = is_plot)
 
     times <- 1
@@ -60,6 +62,8 @@ RHtests_process <- function(data, data.ref = NULL, metadata, prefix = "./OUTPUT/
 
     r <- RHtests_stepsize(data = NULL, data.ref = NULL, TP2, has_ref,
         prefix, is_plot, verbose)
+    # if null returned,
+    if (is.null(r$TP) || nrow(r$TP) == 0) return(NULL)
     r$TP %<>% merge_metainfo(metadata)
     r
 }

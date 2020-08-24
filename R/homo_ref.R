@@ -1,21 +1,21 @@
 #' Homogeneous time series data with reference series
 #'
 #' @param d A data.frame of the inputdata:
-#' - if 3 columns, they are `date`, `varname` and `ref`, and homo with ref will 
+#' - if 3 columns, they are `date`, `varname` and `ref`, and homo with ref will
 #' be used.
 #' - if 2 columns, they are `date`, `varname`, and homo without ref will
 #' be used.
 #' @param metedata A data.frame with column date indicating turning point
 #'
 #' @export
-homo_ref <- function(d, metedata = NULL, prefix  = "./OUTPUT/example01") {
-    if (nrow(d) == 0) { message("no data!"); return() }    
+homo_ref <- function(d, metadata = NULL, prefix  = "./OUTPUT/example01") {
+    if (nrow(d) == 0) { message("no data!"); return() }
     I_base = c(1, 2, 3, 4)
     I_ref  = c(1, 2, 3, 5)
 
     has_ref = ncol(d) == 3
     # tryCatch({
-        l <- RHtests_input(d_ref) # %>% str()
+        l <- RHtests_input(d) # %>% str()
         # prefix <- "../../OUTPUT/example02/example02"
         # prefix <- "OUTPUT/example02/example02"
         if (has_ref) {
@@ -30,12 +30,14 @@ homo_ref <- function(d, metedata = NULL, prefix  = "./OUTPUT/example01") {
         r_year <- RHtests_process(l$year[, I_base], ref_year, metadata, prefix, is_plot = FALSE, maxgap = 366)
 
         r <- list(year = r_year, month = r_month)
-        r$TP <- tidy_TP_site(r)
-
-        r$day <- if (nrow(r$TP) != 0) {
+        r$TP <- TP_tidy_site(r)
+        r$TP_masked <- TP_mask(r$TP, nyerar = 1)
+        
+        r$day <- if (!is.null(r$TP_masked) && nrow(r$TP_masked) != 0) {
             RHtests_stepsize(l$day[, I_base], ref_day, r$TP, prefix = prefix, is_plot = FALSE)
         } else NULL
-        r %>% .[c("year", "month", "day", "TP")]
+        names = c("year", "month", "day", "TP", "TP_masked")
+        r %>% .[names] %>% set_names(names)
     # }, error = function(e) {
     #     message(sprintf('%s', e$message))
     # })
@@ -49,6 +51,7 @@ get_metadata <- function(d, sitename, st_moveInfo) {
     metadata <- st_moveInfo[site == sitename, ] %>%
         .[period_date_begin > date_begin & period_date_end < date_end, ] %>%
         .[, date := period_date_begin]
+    metadata
 }
 
 
@@ -61,17 +64,19 @@ get_metadata <- function(d, sitename, st_moveInfo) {
 #' - if 2 columns, they are `date`, `varname`, and homo without ref will
 #' be used.
 #' @param st_moveInfo A data.frame with the site relocation moving information
-#' 
+#'
+#' @seealso [homo_ref()]
 #' @export
 homo_ref.list <- function(lst, st_moveInfo, .parallel = FALSE) {
     sites <- names(lst) #%>% set_names(., .)
     sites %<>% set_names(., .)
 
+    # , .packages = "RHtestsHelper"
     res <- foreach(d = lst, sitename = sites, i = icount()) %dopar% {
         runningId(i)
         tryCatch({
-            metadata = get_metadata(d, sitename, st_moveInfo)
             # prefix <- "./OUTPUT/example01"
+            metadata = get_metadata(d, sitename, st_moveInfo)
             r = homo_ref(d, metadata)
         }, error = function(e) {
             message(sprintf("[%d] %s", i, e$message))

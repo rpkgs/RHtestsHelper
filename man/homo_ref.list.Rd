@@ -21,3 +21,6 @@ be used.
 \description{
 get the turning points of monthly and yearly data
 }
+\seealso{
+\code{\link[=homo_ref]{homo_ref()}}
+}

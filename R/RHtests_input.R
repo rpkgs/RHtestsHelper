@@ -7,7 +7,8 @@ RHtests_input <- function(d, varnames = NULL) {
     varnames <- setdiff(colnames(d), c(vars_commom, "date"))
 
   if (all.equal(intersect(vars_commom, colnames(d)), vars_commom) != TRUE){
-      d[, `:=`(year = year(date), month = month(date), day = day(date))]
+      d <- plyr::mutate(d, year = year(date), month = month(date), day = day(date))
+      # d[, `:=`(year = year(date), month = month(date), day = day(date))]
   }
   d <- d[, .SD, .SDcols = c(vars_commom, varnames)]
 

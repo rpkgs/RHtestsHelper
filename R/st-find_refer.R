@@ -1,10 +1,10 @@
 #' get the potential reference sites
-#' 
-#' @param st A dataframe of the sites location and covering period information, 
+#'
+#' @param st A dataframe of the sites location and covering period information,
 #' with the `nrow=nsite`.
 #' @param dist A distance matrix with the dimension of `[nsite, nsite]`
 #' @param mat_month The monthly input data matrix, with the dimension of `[ntime, nsite]`
-#' 
+#'
 #' @export
 st_refer <- function(st, dist, mat_month) {
     sites = st$site
@@ -45,10 +45,10 @@ st_refer <- function(st, dist, mat_month) {
 }
 
 #' get the optimal reference site for each site
-#' 
+#'
 #' @param st_refs object returned by [st_refer()]
 #' @param sites_worst sites where TP is confirmed by both of monthly and yearly data
-#' 
+#'
 #' @rdname st_refer
 #' @export
 st_refer_opt <- function(st_refs, sites_worst) {
@@ -96,9 +96,47 @@ period_coverage <- function(x, y) {
     n_valid <- difftime(date_end, date_begin, units = units) %>% as.numeric()
     n_all <- difftime(x[2], x[1], units = units) %>% as.numeric()
     n_valid / n_all
-    
+
     # n = 0
     # n_miss_head = difftime(x[1], date_begin, units = "days")
     # n_miss_tail = -difftime(x[2], date_begin, units = "days")
     # as.numeric(n_miss_head + n_miss_tail)
+}
+
+#' select reference sites
+#'
+#' @param df2 a data.frame with columns of `site`, `date`, and `varname`
+#' @param sites_worst sites with significant TPs
+#'
+#' @import glue
+#' @importFrom lubridate ymd
+#' @export
+find_refer <- function(df2, st, varname = "Tavg", sites_worst) {
+    file = glue("OUTPUT/mete2481_{varname}_st_refer.rda")
+
+    if (!file.exists(file)) {
+        date_max = max(df2$date)
+        date_min = min(df2$date)
+        date <- seq(ymd(date_min), ymd(date_max), by = "day")
+        mat <- dcast(df2, date ~ site, value.var = varname)[, -1] %>% as.matrix()
+
+        ## when aggregate daily to monthly scale, if more than 3 invalid values, monthly
+        # value will be set to NA
+        mat_month <- apply_col(mat, by = format(date, "%Y-%m-01"))
+        mat_month_miss <- apply_col(is.na(mat), by = format(date, "%Y-%m-01"), colSums2)
+        mat_month[mat_month_miss >= 3] <- NA_real_
+
+        ## searching potential reference sites
+        # check site names order first
+        if (!isTRUE(all.equal(st$site %>% as.character(), colnames(mat)))) {
+            stop("check site names order first!")
+        }
+
+        # 1. 站点长度至少大于30年（76个站点被移除）
+        st_refs <- st_refer(st, dist, mat_month)
+        st_refs_opt <- st_refer_opt(st_refs, sites_worst)
+        d_refs <- melt_list(st_refs_opt %>% rm_empty(), "target")
+        save(st_refs, st_refs_opt, d_refs, file = file)
+    }
+    load(file, envir = .GlobalEnv)
 }

@@ -27,12 +27,12 @@ last <- function(x) {x[length(x)]}
 #'
 #' @return
 #' sites with not outliers, QC = "";
-#' 
+#'
 #' sites with not outliers, for outliers, QC equals:
 #' score = 0: unfixed
 #' score = 1: marginal quality fixed
 #' score = 2: good quality fixed
-#' 
+#'
 #' @export
 revise_locaiton <- function(d, prefix = "",
     dist_max = 100,
@@ -118,6 +118,9 @@ revise_locaiton <- function(d, prefix = "",
 #'
 #' @export
 revise_locaiton_multi <- function(info, dist_max = 50) {
+    ## revise record error
+    info = info[n_period >= 28, ] %>% get_moveInfo()
+
     info$QC <- ""
     sites <- info[dist >= dist_max]$site %>% unique()
     info_bad <- info[site %in% sites, ]
@@ -145,7 +148,9 @@ revise_locaiton_multi <- function(info, dist_max = 50) {
     ))
 
     info_final <- rbind(info[!(site %in% sites)], df)
-    info_final
+    get_moveInfo(info_final) # retidy moveinfo and delete duplicated TPs
+    # info_final
     # sites_bad = sites[which(unlist(temp) == "bad")]
     # sites_bad = c("51058", "52378", "52607", "52884", "53730", "54287")
 }
+
