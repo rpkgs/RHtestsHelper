@@ -1,8 +1,8 @@
-merge_TP <- function(res) {
-    res2 <- RHtests_rm_empty(res)
+TP_merge <- function(res) {
+    res2 <- TP_rm_empty(res)
     ## merge yearly and monthly TP
-    info  <- tidy_TP_sites(res2)
-    info2 <- filter_TP(info)
+    info <- TP_tidy_sites(res2)
+    info2 <- TP_mask(info)
 
     info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
     sites_adj = info2[, .N, .(site)][, site]
@@ -11,23 +11,22 @@ merge_TP <- function(res) {
     # lst_TP
 }
 
-#' merge monthly and yearly TPs and filter out bad ones
+#' merge monthly and yearly TPs and mask bads out
 #' 
-#' @param d A data.frame returned by [tidy_TP_sites()]
+#' @param d A data.frame returned by [TP_tidy_sites()]
 #' @param nyear the monthly TP will be filter out, if the distance to the 
 #' nearest yearly TP is longer than `nyear`.
 #' 
 #' @export 
-filter_TP <- function(d, nyear = 1) {
+TP_mask <- function(d, nyear = 1) {
     d[abs(year(date) - year(date_year)) <= nyear, ][Idc != "No  ", ]
 }
 
-# res2 <- RHtests_doubleCheck(res)
 #' rm empty TPs
 #' 
 #' @param fun intersect or union
 #' @export
-RHtests_rm_empty <- function(res, fun = intersect) {
+TP_rm_empty <- function(res, fun = intersect) {
     I_left1 <- map(res, 1) %>% which.notnull()
     I_left2 <- map(res, 2) %>% which.notnull()
     I_left <- fun(I_left1, I_left2) # %>% sort()
@@ -35,39 +34,29 @@ RHtests_rm_empty <- function(res, fun = intersect) {
     # res[I_left]
 }
 
-merge_adjusted <- function(df, varname) {
-    infile = glue("OUTPUT/RHtests_{varname}_QMadjusted.RDS")
-    out <- readRDS(infile)
-    df_adj <- map(out, ~.$data[, .(date, base, QM_adjusted)]) %>% melt_list("site")
-    sites_adj <- sort(unique(df_adj$site))
-
-    varnames = c("site", "date", varname)
-    df_good = df[!(site %in% sites_adj), .SD, .SDcols = varnames] %>% cbind(QC = 1)
-    df_adj2 = df_adj[, .(site, date, QM_adjusted)] %>% set_colnames(varnames) %>% cbind(QC = 0)
-    ans = rbind(df_good, df_adj2) %>% set_colnames(c(varnames, paste0("QC_", varname)))
-    ans
-}
-
-
-#' tidy_TP_sites
+#' TP_tidy_sites
 #' 
 #' @param res2 object returned by [RHtests()]
 #' @export
-tidy_TP_sites <- function(res2) {
+TP_tidy_sites <- function(res2) {
     names <- names(res2)
     if (is.null(names)) names <- seq_along(res2)
     sites_TP <- set_names(names, names)
 
     lst <- foreach(sitename = sites_TP, x = res2, i = icount()) %do% {
         runningId(i, 100)
-        month2 = tidy_TP_site(x)
+        month2 = TP_tidy_site(x)
         cbind(site = sitename, month2)
     }
     do.call(rbind, lst)
 }
 
-#' @rdname tidy_TP_sites
-tidy_TP_site <- function(x) {
+#' @param x Object returned by [homo_ref()], a list with the elements of 
+#' - year
+#' - month
+#' - day
+#' @rdname TP_tidy_sites
+TP_tidy_site <- function(x) {
     year = x$year$TP
     month = x$month$TP
 
@@ -87,3 +76,16 @@ tidy_TP_site <- function(x) {
         reorder_name(c( "kind", "Idc", "Ic", "date", "date_year", "date_meta", 
             "day2_meta", "day2_year"))
 }
+
+# merge_adjusted <- function(df, varname) {
+#     infile = glue("OUTPUT/RHtests_{varname}_QMadjusted.RDS")
+#     out <- readRDS(infile)
+#     df_adj <- map(out, ~.$data[, .(date, base, QM_adjusted)]) %>% melt_list("site")
+#     sites_adj <- sort(unique(df_adj$site))
+
+#     varnames = c("site", "date", varname)
+#     df_good = df[!(site %in% sites_adj), .SD, .SDcols = varnames] %>% cbind(QC = 1)
+#     df_adj2 = df_adj[, .(site, date, QM_adjusted)] %>% set_colnames(varnames) %>% cbind(QC = 0)
+#     ans = rbind(df_good, df_adj2) %>% set_colnames(c(varnames, paste0("QC_", varname)))
+#     ans
+# }

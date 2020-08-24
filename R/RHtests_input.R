@@ -1,3 +1,5 @@
+#' @importFrom lubridate day
+#' @import data.table
 #' @export
 RHtests_input <- function(d, varnames = NULL) {
   vars_commom <- c("year", "month", "day")
@@ -13,5 +15,5 @@ RHtests_input <- function(d, varnames = NULL) {
     reorder_name(vars_commom)
   d_month  = d[, lapply(.SD, mean, na.rm = TRUE), .SDcols =varnames, .(year, month)] %>% cbind(day = 1) %>%
     reorder_name(vars_commom)
-  list(day = d, month = d_month, year = d_year) %>% map(as.data.frame)
+  list(day = d, month = d_month, year = d_year) %>% lapply(as.data.frame)
 }

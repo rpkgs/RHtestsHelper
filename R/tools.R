@@ -1,11 +1,3 @@
-rm_empty <- function(x) {
-    if (is.list(x)) {
-        x[sapply(x, length) > 0]
-    }
-    else {
-        x[!is.na(x)]
-    }
-}
 
 range2 <- function(x, y, na.rm = TRUE) {
     c(min(x, y, na.rm = na.rm), max(x, y, na.rm = na.rm))
@@ -50,3 +42,38 @@ date2num <- function(date) {
 }
 
 is.Date <- function(x) is(x, "Date")
+
+which.notnull <- function(x) {
+    which(!sapply(x, is.null))
+}
+
+is_empty <- function(x) length(x) == 0
+
+rm_empty <- function(x) {
+    if (is.list(x)) {
+        x[sapply(x, length) > 0]
+    }
+    else {
+        x[!is.na(x)]
+    }
+}
+
+reorder_name <- function(d,
+    headvars = c("site", "date", "year", "doy", "d8", "d16"),
+    tailvars = "")
+{
+    names <- names(d)
+    headvars %<>% intersect(names)
+    tailvars %<>% intersect(names)
+    varnames <- c(headvars, setdiff(names, union(headvars, tailvars)), tailvars)
+
+    if (is.data.table(d)) {
+        d[, varnames, with = F]
+    } else if (is.data.frame(d)) {
+        d[, varnames]
+    } else if (is.list(d)){
+        d[varnames]
+    } else{
+        stop("Unknown data type!")
+    }
+}

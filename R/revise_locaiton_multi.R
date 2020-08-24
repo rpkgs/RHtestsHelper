@@ -117,7 +117,7 @@ revise_locaiton <- function(d, prefix = "",
 #' Continuous moving location outliers are also considered at here.
 #'
 #' @export
-revise_locaiton_main <- function(info, dist_max = 50) {
+revise_locaiton_multi <- function(info, dist_max = 50) {
     info$QC <- ""
     sites <- info[dist >= dist_max]$site %>% unique()
     info_bad <- info[site %in% sites, ]

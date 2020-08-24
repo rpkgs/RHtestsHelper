@@ -1,5 +1,5 @@
-
-st_moveInfo <- function(st, prefix = NULL) {
+#' get and zip site moving info
+get_moveInfo <- function(st, prefix = NULL) {
     st$lon %<>% deg2dec() %>% dec2deg()
     st$lat %<>% deg2dec() %>% dec2deg()
     st$alt %<>% get_alt()

@@ -30,14 +30,6 @@ get_refer_sites <- function(df2, varname = "Tavg") {
     # save(st_refs, st_refs_opt, d_refs, file = "OUTPUT/mete2481_TEM_st_refer.rda")
 }
 
-get_metadata <- function(d, sitename, st_moveInfo) {
-    date_begin <- d$date[1]
-    date_end <- d$date[nrow(d)]
-    metadata <- st_moveInfo[site == sitename, ] %>%
-        .[period_date_begin > date_begin & period_date_end < date_end, ] %>%
-        .[, date := period_date_begin]
-}
-
 # ------------------------------------------------------------------------------
 dir_root <- "N:/DATA/China/2400climate data" %>% path.mnt()
 varnames <- c("EVP", "GST", "PRE", "PRS", "RHU", "SSD", "TEM", "WIN")
@@ -64,10 +56,10 @@ if (!file.exists(file_met)) {
 
     # load_all("../missInfo/")
     # 1961_2018, 132 unchanged: lon^2 + lat^2 + alt
-    info_1961_2018  = st_moveInfo(st_1961_2018)
-    info_full       = st_moveInfo(st_full)
-    info2_1961_2018 = revise_locaiton_main(info_1961_2018, dist_max =  50)
-    info2_full      = revise_locaiton_main(info_full, dist_max =  50)
+    info_1961_2018  = get_moveInfo(st_1961_2018)
+    info_full       = get_moveInfo(st_full)
+    info2_1961_2018 = revise_locaiton_multi(info_1961_2018, dist_max = 50)
+    info2_full      = revise_locaiton_multi(info_full, dist_max =  50)
     # 337 unchanged: lon^2 + lat^2
 
     st = ddply(info2_1961_2018, .(site), . %>% .[which.max(n_period), ])

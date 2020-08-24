@@ -4,10 +4,16 @@
 \alias{homo_ref}
 \title{Homogeneous time series data with reference series}
 \usage{
-homo_ref(d, metedata = NULL)
+homo_ref(d, metedata = NULL, prefix = "./OUTPUT/example01")
 }
 \arguments{
-\item{d}{A data.frame with columns of date, varname, ref}
+\item{d}{A data.frame of the inputdata:
+\itemize{
+\item if 3 columns, they are \code{date}, \code{varname} and \code{ref}, and homo with ref will
+be used.
+\item if 2 columns, they are \code{date}, \code{varname}, and homo without ref will
+be used.
+}}
 
 \item{metedata}{A data.frame with column date indicating turning point}
 }
