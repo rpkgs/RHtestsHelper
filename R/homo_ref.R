@@ -31,10 +31,11 @@ homo_ref <- function(d, metadata = NULL, prefix  = "./OUTPUT/example01") {
 
         r <- list(year = r_year, month = r_month)
         r$TP <- TP_tidy_site(r)
-        r$TP_masked <- TP_mask(r$TP, nyerar = 1)
+        TP_masked <- TP_mask(r$TP, nyear = 1) # mask bad ones
+        r$TP_masked <- TP_masked 
         
-        r$day <- if (!is.null(r$TP_masked) && nrow(r$TP_masked) != 0) {
-            RHtests_stepsize(l$day[, I_base], ref_day, r$TP, prefix = prefix, is_plot = FALSE)
+        r$day <- if (!is.null(TP_masked) && nrow(TP_masked) != 0) {
+            RHtests_stepsize(l$day[, I_base], ref_day, TP_masked, prefix = prefix, is_plot = FALSE)
         } else NULL
         names = c("year", "month", "day", "TP", "TP_masked")
         r %>% .[names] %>% set_names(names)
@@ -67,20 +68,25 @@ get_metadata <- function(d, sitename, st_moveInfo) {
 #'
 #' @seealso [homo_ref()]
 #' @export
-homo_ref.list <- function(lst, st_moveInfo, .parallel = FALSE) {
+homo_ref.list <- function(lst, st_moveInfo, .parallel = FALSE, .debug = FALSE) {
     sites <- names(lst) #%>% set_names(., .)
     sites %<>% set_names(., .)
 
     # , .packages = "RHtestsHelper"
     res <- foreach(d = lst, sitename = sites, i = icount()) %dopar% {
         runningId(i)
-        tryCatch({
-            # prefix <- "./OUTPUT/example01"
+        if (.debug) {
             metadata = get_metadata(d, sitename, st_moveInfo)
             r = homo_ref(d, metadata)
-        }, error = function(e) {
-            message(sprintf("[%d] %s", i, e$message))
-        })
+        } else {
+            tryCatch({
+                prefix <- "./OUTPUT/example01"
+                metadata = get_metadata(d, sitename, st_moveInfo)
+                r = homo_ref(d, metadata)
+            }, error = function(e) {
+                message(sprintf("[%d] %s", i, e$message))
+            })
+        }
     }
     res
 }

@@ -4,7 +4,7 @@
 \alias{find_refer}
 \title{select reference sites}
 \usage{
-find_refer(df2, varname = "Tavg", sites_worst)
+find_refer(df2, st, varname = "Tavg", sites_worst)
 }
 \arguments{
 \item{df2}{a data.frame with columns of \code{site}, \code{date}, and \code{varname}}

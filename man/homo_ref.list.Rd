@@ -4,7 +4,7 @@
 \alias{homo_ref.list}
 \title{get the turning points of monthly and yearly data}
 \usage{
-homo_ref.list(lst, st_moveInfo, .parallel = FALSE)
+homo_ref.list(lst, st_moveInfo, .parallel = FALSE, .debug = FALSE)
 }
 \arguments{
 \item{lst}{List of multiple sites data.frame

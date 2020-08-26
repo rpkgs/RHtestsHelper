@@ -115,6 +115,9 @@ find_refer <- function(df2, st, varname = "Tavg", sites_worst) {
     file = glue("OUTPUT/mete2481_{varname}_st_refer.rda")
 
     if (!file.exists(file)) {
+        coord = st[, .(lon = deg2dec(lon), lat = deg2dec(lat))] %>% as.matrix()
+        dist = rdist.earth(coord)
+
         date_max = max(df2$date)
         date_min = min(df2$date)
         date <- seq(ymd(date_min), ymd(date_max), by = "day")

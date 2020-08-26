@@ -8,3 +8,6 @@ OUTPUT/example*/
 
 *.pdf
 *.html
+
+*.csv
+*.rda

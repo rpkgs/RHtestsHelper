@@ -20,6 +20,7 @@ TP_merge <- function(res) {
 #'
 #' @export
 TP_mask <- function(d, nyear = 1) {
+    if (is.null(d) || nrow(d) == 0) return(NULL)
     d[abs(year(date) - year(date_year)) <= nyear, ][Idc != "No  ", ]
 }
 
