@@ -2,10 +2,10 @@
 % Please edit documentation in R/st-revise_locaiton_multi.R
 \name{get_dist}
 \alias{get_dist}
-\title{The distance of locations from the location having the}
+\title{The distance of locations from the center}
 \usage{
 get_dist(lon, lat, n_period)
 }
 \description{
-The distance of locations from the location having the
+The distance of locations from the center
 }

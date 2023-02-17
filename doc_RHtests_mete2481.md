@@ -25,4 +25,5 @@ Q2: PMF检测有突变点，但站点位置未发生变迁，采用QM-adjusted�
 **城市化站点挑选**
 
 -   突变点显著，RHtests则矫正到Rural (or Urban)，则最终为Rural (or Urban)站点
+
 -   突变点不显著，则采用动态Land Cover划分Urban or Rural

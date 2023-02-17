@@ -97,6 +97,6 @@ process <- function(df = NULL, varname = "Tavg", overwrite = FALSE) {
 
     df_final = rbind(df_fixed, df2[!(site %in% sites_fixed), ])
     date = Sys.Date() %>% format() %>% gsub("-", "", .)
-    fwrite(df_final, glue("mete2481_{varname}_RHtests_fixed ({date}).csv"))
+    fwrite(df_final, glue("OUTPUT/OUTPUT_mete2481_{varname}_RHtests_fixed ({date}).csv"))
     df_final
 }

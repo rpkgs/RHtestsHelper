@@ -4,7 +4,7 @@
 \alias{homo_ref}
 \title{Homogeneous time series data with reference series}
 \usage{
-homo_ref(d, metadata = NULL, prefix = "./OUTPUT/example01")
+homo_ref(d, metadata = NULL, prefix = "./OUTPUT/temp/example01")
 }
 \arguments{
 \item{d}{A data.frame of the inputdata:

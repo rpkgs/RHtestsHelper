@@ -1,4 +1,4 @@
-#' The distance of locations from the location having the
+#' The distance of locations from the center
 #'
 #' @export
 get_dist <- function(lon, lat, n_period) {

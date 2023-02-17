@@ -8,7 +8,10 @@
 #' @param metedata A data.frame with column date indicating turning point
 #'
 #' @export
-homo_ref <- function(d, metadata = NULL, prefix  = "./OUTPUT/example01") {
+homo_ref <- function(d, metadata = NULL, prefix  = "./OUTPUT/temp/example01") {
+    indir = dirname(prefix)
+    if (!dir.exists(indir)) dir.create(indir, recursive = TRUE)
+
     if (nrow(d) == 0) { message("no data!"); return() }
     I_base = c(1, 2, 3, 4)
     I_ref  = c(1, 2, 3, 5)
