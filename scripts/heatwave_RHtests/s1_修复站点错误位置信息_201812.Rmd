@@ -1,3 +1,4 @@
+```{r}
 st_moveInfo <- fread("data-raw/mete2481_站点变迁记录-(195101-201812).csv")
 
 # 1961年之前，数据有较多的错误
@@ -39,3 +40,4 @@ fwrite(st_moveInfo, "data-raw/st_195101-201812-adjusted.csv")
 # sites_bad2 = st2[dist > 50, site] %>% unique()
 # st2[site %in% sites_bad2, ]
 # sitenames <- get_sitenames(st_met2481$site[1:10])
+```
