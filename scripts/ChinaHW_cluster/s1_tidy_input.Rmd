@@ -1,0 +1,78 @@
+```{r}
+library(Ipaper)
+library(dplyr)
+# library(data.table)
+library(hydroTools)
+```
+
+```{r}
+f = "Z:/DATA/China/2400climate data/ChinaMeteDaily_SURF_CLI_CHN_MUL_DAY_[195101,202003]_processed.csv"
+df = fread(f)
+```
+## 选择温度和湿度数据
+
+```{r}
+# RH_min缺失30%左右，因此不直接使用
+data = df %>% 
+  select(site, date, starts_with("RH"), starts_with("Tair"), starts_with("Pa")) %>%
+  mutate(across(starts_with("Tair"), ~ divide_by(., 1e1)), 
+    across(starts_with("Pa"), ~ divide_by(., 1e2)))
+
+setkeyv(data, c("site"))
+```
+
+# 计算比湿的方案
+
+```{r}
+library(parallel)
+
+InitCluster(6, FORK = FALSE, kill = FALSE)
+cl = getOption("cl")
+```
+
+```{r}
+clusterEvalQ(cl, {
+  ## set up each worker.  Could also use clusterExport()
+  library(hydroTools)
+  library(dplyr)
+  library(data.table)
+  NULL
+}) -> .tmp
+```
+
+> Pa  : 10Pa, 除以100得kPa
+> Tair: 0.1℃，除以10得摄氏度
+> RH  : %
+
+```{r}
+# 第一步应该挑选数据的起始时间
+dat = data %>% select(site, date, RH_avg, Tair_avg, Tair_max)
+
+fun <- function(d) {
+  Pa  <- atm
+  # select(site, date, RH_avg, Tair_avg, Tair_max)
+  mutate(d,
+    q_mean  = RH2q(RH_avg, Tair_avg, Pa),
+    RH_min2 = q2RH(q_mean, Tair_max, Pa),
+    # Tw      = cal_Tw(ea = q2ea(q_mean, Pa), Tair_max, Pa),
+    HI_max    = heat_index(Tair_max, RH_min2), 
+    HI_max_e  = heat_index(Tair_max, RH_avg)
+  ) 
+}
+
+# profvis::profvis({
+  res <- foreach(SITE = sites, i = icount()) %dopar% {
+    Ipaper::runningId(i, 50)
+    data <- d[site == SITE, ]
+    fun(data)
+  }
+# })
+```
+
+```{r}
+res2 = map(res, function(d) {
+    di = select(d, site, date, HI_max, HI_max_e)
+    di[date >= "1961-01-01", ]
+    # 挑选完整的年份
+})
+```

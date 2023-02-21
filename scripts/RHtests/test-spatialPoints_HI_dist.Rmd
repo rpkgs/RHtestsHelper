@@ -1,0 +1,122 @@
+```{r}
+devtools::load_all()
+source("test/main_pkgs.R")
+
+file_HI <- "../ChinaHW_data/OUTPUT/OBS_China_HI_met2481-(1951-2018).RDS"
+file_HW <- "../ChinaHW_data/OUTPUT/OBS_China_HW_characteristics_met2481-(1951-2018).RDS"
+
+df_hi = readRDS(file_HI)
+df_hw = readRDS(file_HW)
+# 6, 7, 8
+df_hi[, date := make_date(year, month, day)]
+# sites = st_met2370$site
+# df = df[site %in% sites]
+# missinfo: rm site-year with missing values greater than 30 days
+st_met2481[, n_ref := difftime(pmin(date_end, ymd("1990-01-01")), pmax(date_begin, ymd("1961-01-01")))]
+
+{
+    st_left <- st_met2481[n_ref >= 365*15, ]
+    info = df_hi[, .(n_miss = sum(is.na(HI))), .(site, year, month)]
+    info$is_miss = 0
+    info[n_miss > 3, is_miss := 1]
+    
+    info_year = info[month %in% 6:8, .(is_miss = (sum(is_miss) > 0)*1), .(site, year)] %>% 
+        merge(info[, .(n_miss = sum(n_miss)), .(site, year)])
+    sites_long = info_year[, .N, .(site)][N >= 10, ]$site
+    sites_good = info_year[, sum(is_miss) <= 5, .(site)][V1 == TRUE, ]$site # not too much miss
+    sites = intersect(sites_long, sites_good) %>% intersect(st_left$site)#%>% unique()
+    
+    info_left = info_year[site %in% sites & (n_miss < 30 & !is_miss)] #%>% summary()
+    df_hi2 <- merge(df_hi, info_left[, 1:2], by = c("site", "year"))
+}
+
+# rm 34 sites
+InitCluster(10, kill = FALSE)
+{
+    res = foreach(sitename = sites, i = icount()) %dopar% {
+        runningId(i, 10, length(sites))
+        d = df_hi[site == sitename, .(year, Tavg, RHavg, HI)] %>% 
+            .[, lapply(.SD, mean, na.rm = TRUE), .(year), .SDcols = 2:4]
+        res = map(d[, -1], ~slope_p(.x)) %>% as.data.table()
+        cbind(res[1, ], p = res[2, ])
+    }
+    
+    HI_trend = set_names(res, sites) %>% melt_list("site") %>% 
+        merge(st_met2481[, .(site = as.character(site), lon, lat)])
+    
+    file_obs = "OUTPUT/OBS_sp_HI_trends.rds"
+    save(HI_trend, file = file_obs)
+}
+
+{
+    df = df_hw %>% merge(info_left[, 1:2]) %>% 
+        melt(id.vars = c("site", "year", "probs"), variable.name = "index")
+    res = ddply(df[index != "FAR"][,], .(site, index, probs), function(d) {
+        tryCatch({
+            slope_p(d$value)#[1]    
+        }, error = function(e){
+            rep(NA_real_, 2) %>% set_names(c("slope", "pvalue"))
+        })
+    }, .progress = "text")
+    
+    d = res[probs == 0.99, -3] 
+    setorderv(d, c("index"))
+    
+    sp <- st_left[site %in% sites, ] %>% df2sp()
+}
+
+# d_slope = ddply(df_hi, .(site), function(d) {
+#     map(d[, .(Tavg, RHavg, HI)], ~slope_p(.x)[1]) 
+# }, .progress = "text")
+# d_slope = df_hi[, map(.SD, ), .(site), .SDcols = c("Tavg", "RHavg", "HI")]
+
+load(file_obs)
+{
+    # panel.pointsplot
+    at = {c(seq(0.05, 0.5, 0.05), Inf)} %>% c(-rev(.), 0, .)
+    ncol = length(at) - 1
+    colors = get_color("NCV_blu_red", ncol)
+    cex = seq(0.1, 0.4, length.out = ncol/2) %>% c(rev(.), .)
+    
+    d_trend = HI_trend[, 2:4] %>% map(~cut(.x*10, at)) %>% as.data.table()
+    d_pvalue = HI_trend[, 5:7]
+    
+    sp = df2sp(HI_trend[, -1])
+    sp@data <- d_trend
+    key = get_colorkey(at, colors, is_factor = TRUE, space = "right")
+    # key$labels$labels %<>% sprintf("%5.2f", .)
+    
+    p <- spplot(sp, 
+        cex = cex, 
+        col.regions = colors,
+        auto.key = FALSE,
+        legend = list( right = list(fun = draw.colorkey, args = list(key)) ),
+        panel = function(sp.layout, x, y, subscripts, groups, fill, col, pch, cex, ...){
+            sppanel(list(sp.layout), panel.number(), first = TRUE)
+            
+            i = panel.number()
+            pvalue = d_pvalue[[i]]
+            I_sign = pvalue <= 0.05
+            
+            pch_sign = 16
+            pch_nonsign = 1
+            lpoints(x[I_sign], y[I_sign],
+                fill = groups[subscripts][I_sign], col = col[subscripts][I_sign],
+                cex = cex[subscripts][I_sign], pch = pch_sign, ...)
+            lpoints(x[!I_sign], y[!I_sign],
+                fill = groups[subscripts][!I_sign], col = col[subscripts][!I_sign],
+                cex = cex[subscripts][!I_sign], pch = pch_nonsign, ...)
+            sppanel(list(sp.layout), panel.number(), first = FALSE)
+            # panel.grid(h = -1, v = -1, 
+            #            x = seq(80, 130, 10), 
+            #            y = seq(20, 50, 10), lwd = 0.5, lty = 2)
+            # panel.text(x = 75, y = 50.5, title, cex = 1.2, font = 2, fontfamily = "Times", 
+            #            adj = c(0, 0))
+        },
+        sp.layout = list("sp.lines", CH_arc),
+        as.table = TRUE) + 
+        theme_lattice(plot.margin = c(0, 0, 0, -4))
+    write_fig(p, "a.pdf", 8, 6)
+}
+
+```
