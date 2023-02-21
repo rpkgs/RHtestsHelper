@@ -1,8 +1,9 @@
-```{r}
+```{r, message=FALSE, echo=FALSE}
+library(Ipaper)
+library(dplyr)
 library(lubridate)
 library(RHtests)
 library(missInfo)
-library(Ipaper)
 # library(latticeGrob)
 
 devtools::load_all()
@@ -17,8 +18,7 @@ file_mete_monthly <- "OUTPUT/INPUT_HImete_st2138.rda"
 load(file_mete_monthly)
 df <- readRDS("OUTPUT/INPUT_HImete_daily_st2138.RDS")
 
-## fill data of date uncontinues values
-df2 <- fix_uncontinue(df)
+# df2 <- fix_uncontinue(df) # fill data of date uncontinues values
 # saveRDS(df2, "OUTPUT/INPUT_HImete_daily_st2138.RDS")
 ```
 
@@ -104,6 +104,7 @@ if (nrow(d) == 0) {
   return()
 }
 l <- RHtests_input(d)
+
 ## 以monthly为准
 prefix <- "./OUTPUT/example01"
 r_month <- RHtests_process(l$month, NULL, metadata, prefix, is_plot = FALSE, maxgap = 366)

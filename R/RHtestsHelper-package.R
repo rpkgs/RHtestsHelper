@@ -1,6 +1,6 @@
 #' @keywords internal
 #' @import data.table magrittr RHtests
-#' @import plyr foreach
+#' @importFrom Ipaper foreach
 "_PACKAGE"
 
 

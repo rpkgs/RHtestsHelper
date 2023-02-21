@@ -35,7 +35,11 @@ adjust_TP <- function(TP, metadata, maxgap = 366) {
   if (nrow(TP0) == 0) TP0 = NULL
   if (nrow(TP1) == 0) TP1 = NULL
   TP_final = rbind(TP0, TP1)
+  
   ## MERGE DUPLICATED DATE
+  # TODO: rm plyr
+  browser()
+
   TP_final %<>% plyr::ddply(.(date), function(d) {
     as.data.table(d)[which.min(abs(diff)), ]
   }) %>% data.table()

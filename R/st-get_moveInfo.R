@@ -40,10 +40,11 @@ get_moveInfo <- function(st) {
     st_moveInfo %>% st_extraInfo()
 }
 
+#' @importFrom dplyr mutate
 #' @export
 st_extraInfo <- function(st_moveInfo) {
     suppressWarnings({
-        st_moveInfo %<>% plyr::mutate(
+        st_moveInfo %<>% mutate(
             n_all = difftime(date_end, date_begin) %>% as.numeric() %>% add(1),
             n_period = difftime(period_date_end, period_date_begin, units = "days") %>% as.numeric() %>% add(1)
         )
