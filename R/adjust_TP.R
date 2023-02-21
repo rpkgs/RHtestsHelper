@@ -1,5 +1,7 @@
 #' @export
 merge_metainfo <- function(TP, metadata) {
+  if (is.null(TP)) return(NULL)
+
   TP$date %<>% num2date()
   if (nrow(metadata) == 0 || length(metadata) == 0) {
     return(cbind(TP[, 1:9], date_meta = NA, diff = 9999))
@@ -21,6 +23,8 @@ merge_metainfo <- function(TP, metadata) {
 #'
 #' @export
 adjust_TP <- function(TP, metadata, maxgap = 366) {
+  if (is.null(TP)) return(NULL)
+
   TP %<>% merge_metainfo(metadata)
   ## 调整Type-1突变点位置
   ## Type-0中仅挑选有metedata支持的TP
@@ -37,19 +41,15 @@ adjust_TP <- function(TP, metadata, maxgap = 366) {
   TP_final = rbind(TP0, TP1)
   
   ## MERGE DUPLICATED DATE
-  # TODO: rm plyr
-  browser()
-
-  TP_final %<>% plyr::ddply(.(date), function(d) {
-    as.data.table(d)[which.min(abs(diff)), ]
-  }) %>% data.table()
-  TP_final[order(date), ]
+  TP_final[, .SD[which.min(abs(diff)), ], .(date)]
 }
 
 #' @param r object returned by [StepSize()]
 #' @rdname adjust_TP
 #' @export
 adjust_step_TP <- function(r) {
+  if (is.null(r)) return(NULL)
+
   TP2   <- r$TP
   I_del <- TP2[, which.min(abs(stepsize))]
   kind  <- TP2$kind[I_del]

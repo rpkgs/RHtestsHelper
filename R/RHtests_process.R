@@ -12,10 +12,10 @@ RHtests_stepsize <- function(data = NULL, data.ref = NULL, TP2,
 
     if (nrow(TP2) == 0) return(NULL)
     r   <- FUN_step(InCs = TP2, output = prefix, is_plot = is_plot)
-
+    
     times <- 1
     while (times < nrow(TP2)) {
-        if (length(r$TP) == 0) return(NULL)
+        if (!is.list(r) || length(r$TP) == 0) return(NULL)
         TP2 <- adjust_step_TP(r)
 
         if (nrow(TP2) < nrow(r$TP)) {
@@ -80,13 +80,13 @@ RHtests_read <- function(data, data.ref = NULL, plev = 0.95) {
 
 RHtests_process2 <- function(data, data.ref = NULL, metadata, prefix = "./OUTPUT/example02",
     maxgap = 90,
-    is_plot = TRUE, verbose = TRUE)
+    is_plot = TRUE, verbose = FALSE)
 {
     check_dir(dirname(prefix))
 
     has_ref = !is.null(data.ref)
-    FUN_FindU  <- if (has_ref) FindU.wRef else FindU
-    FUN_FindUD <- if (has_ref) FindUD.wRef else FindUD
+    FUN_FindU  <- ifelse(has_ref, FindU.wRef, FindU)
+    FUN_FindUD <- ifelse(has_ref, FindUD.wRef, FindUD)
 
     RHtests_read(data, data.ref)
     U  <- FUN_FindU(output = prefix, is_plot = is_plot)

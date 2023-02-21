@@ -1,36 +1,24 @@
 ```{r}
+library(Ipaper)
 library(lubridate)
 library(RHtests)
 library(missInfo)
-library(latticeGrob)
+# library(latticeGrob)
 
-load_all()
+devtools::load_all()
+```
+
+```{r}
 ## 2. 计算热浪特征指标 ---------------------------------------------------------
-{
-    # file_HI <- "../ChinaHW_data/OUTPUT/OBS_China_HI_met2481-(1951-2018).RDS"
-    file_mete_monthly <- "OUTPUT/INPUT_HImete_st2138.rda"
-    load(file_mete_monthly)
-    df = readRDS("OUTPUT/INPUT_HImete_daily_st2138.RDS")
-}
+# file_HI <- "../ChinaHW_data/OUTPUT/OBS_China_HI_met2481-(1951-2018).RDS"
+file_mete_monthly <- "OUTPUT/INPUT_HImete_st2138.rda"
+load(file_mete_monthly)
 
-s1_reprocess = FALSE
-if (s1_reprocess) {
-    df2 = ddply(df, .(site), function(d) {
-        n = nrow(d)
-        date_begin = d$date[1]
-        date_end   = d$date[n]
-        if (month(date_begin) != 1) 
-            date_begin = make_date(year(date_begin) + 1, 1, 1)
-        if (month(date_end) != 12) 
-            date_end = make_date(year(date_end) - 1, 12, 31)
-        
-        temp = data.table(site = d$site[1], 
-                          date = seq.Date(date_begin, date_end, by = "day"))
-        merge(d, temp, c("site", "date"), all.y = TRUE)
-    }, .progress = "text")
-    # saveRDS(df2, "OUTPUT/INPUT_HImete_daily_st2138.RDS")
-}
+df <- readRDS("OUTPUT/INPUT_HImete_daily_st2138.RDS")
+```
 
+
+```{r}
 ## fill data of date uncontinues values
 # st = st_met2370[, .(id, site, lon, lat, kind = is_city)]
 sites_rural <- st_met2370[is_city == "Rural", site] %>% set_names(., .)
@@ -38,15 +26,15 @@ sites = df[, .N, .(site)]$site
 
 # I_bad = c(15, 30, 166, 172, 190)
 # I_bad = c(274, 327, 492, 502, 744, 796)
-run_RHtests = FALSE
+run_RHtests = 1
 if (run_RHtests){
-    InitCluster(10, kill = TRUE)
-    load_all("../meteCMA/RHtests/")
-
+    # InitCluster(10, kill = TRUE)
+    # load_all("../meteCMA/RHtests/")
     varname <- "RHavg"
-    res  <- RHtests_main(df, sites, varname)
+    res  <- RHtests_main(df, st_moveInfo, sites, varname)
     res2 <- RHtests_rm_empty(res)
-    saveRDS(res2, glue("OUTPUT/RHtests_{varname}_monthly_2138.RDS"))
+
+    saveRDS(res2, glue("OUTPUT/RHtests_{varname}_monthly_2138_V2.RDS"))
 
     ## merge yearly and monthly TP
     info  <- tidy_TP(res2)
@@ -57,10 +45,11 @@ if (run_RHtests){
     lst_TP <- split(info2, info2$site)
 
     out <- RHtests_adj_daily(df, lst_TP, varname)
-    saveRDS(out, glue("OUTPUT/RHtests_{varname}_QMadjusted.RDS"))
+    saveRDS(out, glue("OUTPUT/RHtests_{varname}_QMadjusted_V2.RDS"))
 }
-## DEBUG module ----------------------------------------------------------------
+```
 
+```{r}
 merge_adjusted <- function(df, varname) {
     infile = glue("OUTPUT/RHtests_{varname}_QMadjusted.RDS")
     out <- readRDS(infile)
@@ -70,11 +59,12 @@ merge_adjusted <- function(df, varname) {
     varnames = c("site", "date", varname)
     df_good = df[!(site %in% sites_adj), .SD, .SDcols = varnames] %>% cbind(QC = 1)
     df_adj2 = df_adj[, .(site, date, QM_adjusted)] %>% set_colnames(varnames) %>% cbind(QC = 0)
-    ans = rbind(df_good, df_adj2) %>% set_colnames(c(varnames, paste0("QC_", varname)))
+    ans = rbind(df_good, df_adj2) %>% 
+      set_colnames(c(varnames, paste0("QC_", varname)))
     ans
 }
 
-{    
+if (1) {    
     d_Tavg = merge_adjusted(df, "Tavg")
     d_RHavg = merge_adjusted(df, "RHavg")
     df2 = merge(d_Tavg, d_RHavg, by = c("site", "date"))
@@ -93,7 +83,9 @@ merge_adjusted <- function(df, varname) {
     saveRDS(df2, "OUTPUT/INPUT_HImete_daily_st2138 (QM-adjusted).RDS")
 }
 ## MERGED QM_ADJUST SERIES -----------------------------------------------------
+```
 
+```{r}
 {
     info = df2[, .(n_miss = sum(is.na(HI))), .(site, year = year(date))]
     info$site %<>% as.numeric()
@@ -149,6 +141,7 @@ merge_adjusted <- function(df, varname) {
 
 # 现53588站自1998年1月开始站址南迁，海拔高度降低近700m，之后气温明显升高。
 # 采用RHtests进行处理非常必要
+
 # st_moveInfo[site == 56584, ]
 # site moveTimes tag   lon  lat  alt period_date_begin period_date_end date_begin   date_end n_all n_period
 # 1: 56584         3   1 10326 2751 1452        1959-01-01      1978-12-31 1959-01-01 2018-12-31 21915     7305
