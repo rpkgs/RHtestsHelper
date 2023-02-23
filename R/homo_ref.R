@@ -93,5 +93,3 @@ homo_ref.list <- function(lst, st_moveInfo, .parallel = FALSE, .debug = FALSE) {
     }
     res
 }
-
-# lst = df[, .(site, date, Tavg)] %>% split(.[, -1], .$site)

@@ -9,14 +9,15 @@ format_RHinput <- function(d) {
 }
 
 #' RHtests_main
-#'
+#' 
 #' @param df A data.frame with the columns at least of `site`, 'date', 'varname'
 #' @param st_moveInfo
-#'
+#' 
 #' @export
 RHtests_main <- function(df, st_moveInfo, sites, varname) {
   sites %<>% set_names(., .)
-  res <- foreach(sitename = sites, i = icount(3*1e2)) %do% {
+  vars_sel = c("date", varname)
+  res <- foreach(sitename = sites, i = icount()) %do% {
     # for(i in seq_along(sites_rural[1:30])) {
     runningId(i)
     # sitename = sites_rural[i]
@@ -24,12 +25,13 @@ RHtests_main <- function(df, st_moveInfo, sites, varname) {
     
     tryCatch({
       d <- df[site == sitename, .SD, .SDcols = c("date", varname)]
-      date_begin <- d$date[1]
-      date_end <- d$date[nrow(d)]
+      date_begin <- first(d$date)
+      date_end <- last(d$date)
+      # 站点迁移信息
       metadata <- st_moveInfo[site == sitename, ] %>%
         .[period_date_begin > date_begin &
-          period_date_end < date_end, ]
-      metadata[, date := period_date_begin]
+          period_date_end < date_end, ] %>%
+        mutate(date = period_date_begin)
 
       if (nrow(d) == 0) {
         message("no data!")
@@ -128,16 +130,4 @@ tidy_TP <- function(res2) {
   }
   info <- do.call(rbind, lst)
   info
-}
-
-plot_RHtests_multi <- function(obj, outfile = "RHtests.pdf") {
-  dout <- map(obj$result, ~ .$data[, .(date = num2date(date), base, QM_adjusted)]) %>%
-    melt_list("site")
-  n <- length(obj$result)
-
-  p <- ggplot(dout, aes(date, y = QM_adjusted - base)) +
-    geom_line() +
-    # geom_line(aes(date, QM_adjusted), color = "blue") +
-    facet_wrap(~site, scales = "free", ncol = 2)
-  write_fig(p, outfile, 10, 50 / 70 * n)
 }

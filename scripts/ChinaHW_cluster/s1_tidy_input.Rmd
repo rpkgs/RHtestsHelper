@@ -3,76 +3,86 @@ library(Ipaper)
 library(dplyr)
 # library(data.table)
 library(hydroTools)
+library(tidyfst)
+
+f_raw = "data-raw/INPUT/INPUT_met2481_Tmax&RHmax_for_HImax_1951-2019.fst"
 ```
+
+```{r}
+# 去除不完整的年份
+cal_heatindex <- function(d) {
+  Pa <- atm
+  # select(site, date, RH_avg, Tair_avg, Tair_max)
+  mutate(d,
+    q_mean = RH2q(RH_avg, Tair_avg, Pa),
+    RH_min2 = q2RH(q_mean, Tair_max, Pa),
+    # Tw      = cal_Tw(ea = q2ea(q_mean, Pa), Tair_max, Pa),
+    HI_max = heat_index(Tair_max, RH_min2),
+    HI_max_e = heat_index(Tair_max, RH_avg)
+  )
+}
+
+rm_TailNaN <- function(d) {
+  ind <- d[, which.notna(RH_avg + Tair_avg + Tair_max)]
+
+  i_begin <- first(ind)
+  i_end <- last(ind)
+
+  d[i_begin:i_end, ]
+}
+
+get_siteInfo <- function(d) {
+  ind <- d[, which.notna(RH_avg + Tair_avg + Tair_max)]
+  n_all <- nrow(d)
+  n_miss <- n_all - length(ind)
+
+  data.table(
+    date_begin = min(d$date),
+    date_end = max(d$date),
+    n_all, n_miss, perc_miss = n_miss / n_all * 100
+  )
+}
+```
+
+## 0.1. 数据预处理，选择温度和湿度数据
 
 ```{r}
 f = "Z:/DATA/China/2400climate data/ChinaMeteDaily_SURF_CLI_CHN_MUL_DAY_[195101,202003]_processed.csv"
 df = fread(f)
 ```
-## 选择温度和湿度数据
 
 ```{r}
 # RH_min缺失30%左右，因此不直接使用
-data = df %>% 
-  select(site, date, starts_with("RH"), starts_with("Tair"), starts_with("Pa")) %>%
+data_raw = df %>% 
+  select(site, date, 
+    # starts_with("Pa"),
+    starts_with("RH"), starts_with("Tair")) %>%
   mutate(across(starts_with("Tair"), ~ divide_by(., 1e1)), 
     across(starts_with("Pa"), ~ divide_by(., 1e2)))
 
 setkeyv(data, c("site"))
 ```
 
-# 计算比湿的方案
-
 ```{r}
-library(parallel)
+# 这一步仅有0.16%的数据移除
+.dat = data_raw[date <= "2019-12-31", rm_TailNaN(.SD), .(site)]
+data <- .dat %>% cal_heatindex()
 
-InitCluster(6, FORK = FALSE, kill = FALSE)
-cl = getOption("cl")
+export_fst(data, f_raw, 50)
 ```
 
+## 0.2. 读取数据
 ```{r}
-clusterEvalQ(cl, {
-  ## set up each worker.  Could also use clusterExport()
-  library(hydroTools)
-  library(dplyr)
-  library(data.table)
-  NULL
-}) -> .tmp
+data = import_fst(f_raw)
+# 挑选年份完成的数据
+
+info = data[, get_siteInfo(.SD), site]
+sites_bad <- info[perc_miss >= 2, site]
 ```
 
-> Pa  : 10Pa, 除以100得kPa
-> Tair: 0.1℃，除以10得摄氏度
-> RH  : %
-
+> 可以看到一些缺失比较多的站点
 ```{r}
-# 第一步应该挑选数据的起始时间
-dat = data %>% select(site, date, RH_avg, Tair_avg, Tair_max)
-
-fun <- function(d) {
-  Pa  <- atm
-  # select(site, date, RH_avg, Tair_avg, Tair_max)
-  mutate(d,
-    q_mean  = RH2q(RH_avg, Tair_avg, Pa),
-    RH_min2 = q2RH(q_mean, Tair_max, Pa),
-    # Tw      = cal_Tw(ea = q2ea(q_mean, Pa), Tair_max, Pa),
-    HI_max    = heat_index(Tair_max, RH_min2), 
-    HI_max_e  = heat_index(Tair_max, RH_avg)
-  ) 
-}
-
-# profvis::profvis({
-  res <- foreach(SITE = sites, i = icount()) %dopar% {
-    Ipaper::runningId(i, 50)
-    data <- d[site == SITE, ]
-    fun(data)
-  }
-# })
-```
-
-```{r}
-res2 = map(res, function(d) {
-    di = select(d, site, date, HI_max, HI_max_e)
-    di[date >= "1961-01-01", ]
-    # 挑选完整的年份
-})
+info_miss = data2[site %in% sites_bad, 
+  missInfo(RH_avg + Tair_avg + Tair_max, date, site[1])$info, site]
+info_miss
 ```
