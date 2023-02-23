@@ -1,0 +1,43 @@
+# 1. 计算比湿的方案
+
+```{r}
+library(parallel)
+
+InitCluster(6, FORK = FALSE, kill = FALSE)
+cl = getOption("cl")
+```
+
+```{r}
+clusterEvalQ(cl, {
+  ## set up each worker.  Could also use clusterExport()
+  library(hydroTools)
+  library(dplyr)
+  library(data.table)
+  NULL
+}) -> .tmp
+```
+
+> Pa  : 10Pa, 除以100得kPa
+> Tair: 0.1℃，除以10得摄氏度
+> RH  : %
+
+```{r}
+# 第一步应该挑选数据的起始时间
+dat = data %>% select(site, date, RH_avg, Tair_avg, Tair_max)
+
+# profvis::profvis({
+  res <- foreach(SITE = sites, i = icount()) %dopar% {
+    Ipaper::runningId(i, 50)
+    data <- d[site == SITE, ]
+    fun(data)
+  }
+# })
+```
+
+```{r}
+res2 = map(res, function(d) {
+    di = select(d, site, date, HI_max, HI_max_e)
+    di[date >= "1961-01-01", ]
+    # 挑选完整的年份
+})
+```

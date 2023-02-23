@@ -12,3 +12,5 @@ OUTPUT/example*/
 *.csv
 *.rda
 *.fst
+
+*.ipynb

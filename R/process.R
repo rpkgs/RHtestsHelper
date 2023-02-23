@@ -37,7 +37,7 @@ process <- function(df = NULL, varname = "Tavg", overwrite = FALSE) {
     }
 
   if (!file.exists(file_RHtests_daily) || overwrite) {
-    system.time(res <- homo_ref.list(lst, st_moveInfo))
+    system.time(res <- homogenize.wRef.list(lst, st_moveInfo))
     saveRDS(res, file_RHtests_daily)
   }
   res <- readRDS(file_RHtests_daily)
@@ -71,7 +71,7 @@ process <- function(df = NULL, varname = "Tavg", overwrite = FALSE) {
 
       tryCatch(
         {
-          r <- homo_ref(d, metadata)
+          r <- homogenize.wRef(d, metadata)
         },
         error = function(e) {
           message(sprintf("[%d] %s", i, e$message))
@@ -81,7 +81,7 @@ process <- function(df = NULL, varname = "Tavg", overwrite = FALSE) {
     saveRDS(res_ref, file = file_RHtests_daily_withRef)
   }
   res_ref <- readRDS(file_RHtests_daily_withRef)
-  ## TPs 不为空的站点，采用homo_ref修正；其余的采用no-ref进行修正
+  ## TPs 不为空的站点，采用homogenize.wRef修正；其余的采用no-ref进行修正
 
   ## 1. 在含有reference sites的站点中---------------------------------------------
   # 2325站点中，1404站点存在突变点，其余921站点保持不变

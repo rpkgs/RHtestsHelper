@@ -40,12 +40,10 @@ TP_tidy_sites <- function(res2) {
     month2 <- TP_tidy_site(x)
     cbind(site = sitename, month2)
   }
-  # do.call(rbind, .)
-  # browser()
   do.call(rbind.data.frame, lst)
 }
 
-#' @param x Object returned by [homo_ref()], a list with the elements of
+#' @param x Object returned by [homogenize.wRef()], a list with the elements of
 #' - year
 #' - month
 #' - day

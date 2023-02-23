@@ -12,7 +12,7 @@ TP_tidy_site(x)
 \arguments{
 \item{res2}{object returned by \code{\link[=RHtests]{RHtests()}}}
 
-\item{x}{Object returned by \code{\link[=homo_ref]{homo_ref()}}, a list with the elements of
+\item{x}{Object returned by \code{\link[=homogenize.wRef]{homogenize.wRef()}}, a list with the elements of
 \itemize{
 \item year
 \item month
