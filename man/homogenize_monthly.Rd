@@ -4,7 +4,7 @@
 \alias{homogenize_monthly}
 \title{RHtests_main}
 \usage{
-homogenize_monthly(df, st_moveInfo, sites, varname)
+homogenize_monthly(df, st_moveInfo, sites, varname, ..., .parallel = FALSE)
 }
 \arguments{
 \item{df}{A data.frame with the columns at least of \code{site}, 'date', 'varname'}

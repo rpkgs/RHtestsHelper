@@ -33,3 +33,12 @@ width_str <- function(str, width = NULL) {
     sprintf("%s", str)
   }
 }
+
+last <- function(x) {
+  x[length(x)]
+}
+
+#' @importFrom Ipaper %dopar% %do%
+get_dof <- function(.parallel = FALSE) {
+  ifelse(.parallel, `%dopar%`, `%do%`)
+}

@@ -30,8 +30,8 @@ l <- RHtests_input(d)
 ## 以monthly为准
 prefix <- "./OUTPUT/example01"
 
-r_month <- RHtests_process2(l$month, NULL, metadata, is_plot = TRUE, maxgap = 366)
-r_year <- RHtests_process2(l$year, NULL, metadata, is_plot = FALSE, maxgap = 366)
+r_month <- RHtests_process(l$month, NULL, metadata, is_plot = TRUE, maxgap = 366)
+r_year <- RHtests_process(l$year, NULL, metadata, is_plot = FALSE, maxgap = 366)
 # TP <- r_month$TP
 # r_daily <- RHtests_stepsize(l$day, NULL, TP, prefix = prefix, is_plot = TRUE)
 # list(year = r_year, month = r_month)

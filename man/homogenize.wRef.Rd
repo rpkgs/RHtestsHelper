@@ -4,7 +4,7 @@
 \alias{homogenize.wRef}
 \title{Homogeneous time series data with reference series}
 \usage{
-homogenize.wRef(d, metadata = NULL, prefix = "./OUTPUT/temp/example01")
+homogenize.wRef(d, metadata = NULL, prefix = "./OUTPUT/example01")
 }
 \arguments{
 \item{d}{A data.frame of the inputdata:

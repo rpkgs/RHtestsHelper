@@ -16,8 +16,6 @@ dist_score <- function(x, y) {
     (x$lon == y$lon) + (x$lat == y$lat) + (abs(x$alt - y$alt) <= 0.005)
 }
 
-last <- function(x) {x[length(x)]}
-
 #' Revise meteorological station's location error
 #'
 #' @param d A data.frame with the columns at least of `dist`, `lon`, `lat`, `alt`

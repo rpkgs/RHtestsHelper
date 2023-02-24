@@ -8,10 +8,10 @@
 #' @param metedata A data.frame with column date indicating turning point
 #'
 #' @export
-homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/temp/example01") {
+homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
   indir <- dirname(prefix)
   if (!dir.exists(indir)) dir.create(indir, recursive = TRUE)
-
+  
   if (nrow(d) == 0) {
     message("no data!")
     return()
@@ -22,12 +22,12 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/temp/example0
   has_ref <- ncol(d) == 3
   # tryCatch({
   l <- RHtests_input(d) # %>% str()
-  # prefix <- "../../OUTPUT/example02/example02"
   # prefix <- "OUTPUT/example02/example02"
+
   if (has_ref) {
-    ref_year <- l$year[, I_ref]
+    ref_year  <- l$year[, I_ref]
     ref_month <- l$month[, I_ref]
-    ref_day <- l$day[, I_ref]
+    ref_day   <- l$day[, I_ref]
   } else {
     ref_year <- ref_month <- ref_day <- NULL
   }
@@ -46,9 +46,7 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/temp/example0
     NULL
   }
   names <- c("year", "month", "day", "TP", "TP_masked")
-  r %>%
-    .[names] %>%
-    set_names(names)
+  r[names] %>% set_names(names)
   # }, error = function(e) {
   #     message(sprintf('%s', e$message))
   # })
@@ -59,9 +57,10 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/temp/example0
 get_metadata <- function(d, sitename, st_moveInfo) {
   date_begin <- d$date[1]
   date_end <- d$date[nrow(d)]
+
   metadata <- st_moveInfo[site == sitename, ] %>%
-    .[period_date_begin > date_begin & period_date_end < date_end, ] %>%
-    .[, date := period_date_begin]
+    .[period_date_begin > date_begin & period_date_end < date_end, ] %>% 
+    mutate(date = period_date_begin)
   metadata
 }
 
@@ -79,10 +78,8 @@ get_metadata <- function(d, sitename, st_moveInfo) {
 #' @seealso [homogenize.wRef()]
 #' @export
 homogenize.wRef.list <- function(lst, st_moveInfo, .parallel = FALSE, .debug = FALSE) {
-  sites <- names(lst) # %>% set_names(., .)
-  sites %<>% set_names(., .)
+  sites <- names(lst) %>% set_names(., .)
 
-  # , .packages = "RHtestsHelper"
   res <- foreach(d = lst, sitename = sites, i = icount()) %dopar% {
     runningId(i)
     if (.debug) {

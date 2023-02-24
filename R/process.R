@@ -1,10 +1,10 @@
 #' RHtests process
-#'
+#' 
 #' @param df A data.table with the columns of `site`, `lon`, `lat`, `alt`, `date`
 #' and `varname`.
 #' @param varname String, the variable that you wish to harmonized.
 #' @param overwrite Boolean
-#'
+#' 
 #' @export
 process <- function(df = NULL, varname = "Tavg", overwrite = FALSE) {
   file_met <- glue("OUTPUT/INPUTS_mete2481_{varname}_daily (195101-201912).rda")
@@ -69,11 +69,9 @@ process <- function(df = NULL, varname = "Tavg", overwrite = FALSE) {
       d <- merge(d_target, d_refer %>% set_names(c("date", "ref")), all.x = TRUE)
       metadata <- get_metadata(d, site_target, st_moveInfo)
 
-      tryCatch(
-        {
+      tryCatch({
           r <- homogenize.wRef(d, metadata)
-        },
-        error = function(e) {
+        }, error = function(e) {
           message(sprintf("[%d] %s", i, e$message))
         }
       )
@@ -103,9 +101,7 @@ process <- function(df = NULL, varname = "Tavg", overwrite = FALSE) {
   sites_fixed <- df_fixed$site %>% unique()
 
   df_final <- rbind(df_fixed, df2[!(site %in% sites_fixed), ])
-  date <- Sys.Date() %>%
-    format() %>%
-    gsub("-", "", .)
+  date <- Sys.Date() %>% format() %>% gsub("-", "", .)
   fwrite(df_final, glue("OUTPUT/OUTPUT_mete2481_{varname}_RHtests_fixed ({date}).csv"))
   df_final
 }

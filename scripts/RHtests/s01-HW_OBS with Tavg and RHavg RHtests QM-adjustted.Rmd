@@ -3,7 +3,6 @@ library(Ipaper)
 library(lubridate)
 library(RHtests)
 library(missInfo)
-# library(latticeGrob)
 
 devtools::load_all()
 ```
@@ -30,7 +29,7 @@ run_RHtests = 1
 if (run_RHtests){
   # InitCluster(10, kill = TRUE)
   varname <- "RHavg"
-  res  <- RHtests_main(df, st_moveInfo, sites, varname)
+  res <- homogenize_monthly(df, st_moveInfo, sites, varname)
   res2 <- RHtests_rm_empty(res)
   
   saveRDS(res2, glue("OUTPUT/RHtests_{varname}_monthly_2138_V2.RDS"))
