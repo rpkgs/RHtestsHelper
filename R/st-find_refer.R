@@ -6,11 +6,23 @@
 #' @param mat_month The monthly input data matrix, with the dimension of `[ntime, nsite]`
 #' 
 #' @export
-st_refer <- function(st, dist, mat_month) {
-  sites <- st$site
-
+st_refer <- function(st, mat_month, .parallel=FALSE, nsite = NULL) {
+  if (!isTRUE(all.equal(st$site %>% as.character(), colnames(mat_month)))) {
+    stop("check site names order first!")
+  }
+  
+  sites <- st$site %>% set_names(., .)
+  coord <- st[, cbind(lon, lat)]
+  dist <- rdist.earth(coord) # in km
+  
   st_refs <- list()
-  for (i in seq_along(sites)) {
+  `%dof%` <- get_dof(.parallel) # get do function
+
+  if (is.null(nsite)) nsite = length(sites)
+  
+  inds = set_names(seq_along(sites), sites)
+  foreach(i = inds, icount(nsite)) %dof% {  
+  # for (i in seq_along(sites)) {
     runningId(i, 100)
     disti <- dist[, i]
     ind_near <- which(disti <= 350) %>% setdiff(i) # in the circle buffer of 350km
@@ -38,10 +50,9 @@ st_refer <- function(st, dist, mat_month) {
       data1 <- diff(data)
       st_ref$cor <- cor(data1, use = "pairwise.complete.obs")[1, -1]
     }
-    st_refs[[i]] <- st_ref
+    st_ref
+    # st_refs[[i]] <- st_ref
   }
-  names(st_refs) <- sites
-  st_refs
 }
 
 #' get the optimal reference site for each site
@@ -59,6 +70,7 @@ st_refer_opt <- function(st_refs, sites_worst) {
     } else {
       x <- x[perc_cov > 0.8 & perc_cov_period > 0.8]
       x <- x[!(site %in% sites_worst) & cor >= 0.8]
+
       if (nrow(x) == 0) {
         return(NULL)
       }
@@ -73,7 +85,7 @@ st_refer_opt <- function(st_refs, sites_worst) {
   })
   out <- map(st_refs2, function(x) {
     if (is.null(x)) {
-      return(x)
+      NULL
     } else {
       x[which.max(perc_cov), ]
     }
@@ -98,8 +110,6 @@ period_coverage <- function(x, y) {
   n_valid <- difftime(date_end, date_begin, units = units) %>% as.numeric()
   n_all <- difftime(x[2], x[1], units = units) %>% as.numeric()
   n_valid / n_all
-
-  # n = 0
   # n_miss_head = difftime(x[1], date_begin, units = "days")
   # n_miss_tail = -difftime(x[2], date_begin, units = "days")
   # as.numeric(n_miss_head + n_miss_tail)
@@ -117,26 +127,21 @@ find_refer <- function(df2, st, varname = "Tavg", sites_worst) {
   file <- glue("OUTPUT/mete2481_{varname}_st_refer.rda")
 
   if (!file.exists(file)) {
-    coord <- st[, .(lon = deg2dec(lon), lat = deg2dec(lat))] %>% as.matrix()
-    dist <- rdist.earth(coord)
-
-    
     ## searching potential reference sites
     # check site names order first
-    if (!isTRUE(all.equal(st$site %>% as.character(), colnames(mat)))) {
-      stop("check site names order first!")
-    }
-
     # 1. 站点长度至少大于30年（76个站点被移除）
-    st_refs <- st_refer(st, dist, mat_month)
+    # coord <- st[, .(lon = deg2dec(lon), lat = deg2dec(lat))] %>% as.matrix()
+    st_refs <- st_refer(st, mat_month)
     st_refs_opt <- st_refer_opt(st_refs, sites_worst)
-    d_refs <- melt_list(st_refs_opt %>% rm_empty(), "target")
+    d_refs <- melt_list(st_refs_opt, "target")
     save(st_refs, st_refs_opt, d_refs, file = file)
   }
   load(file, envir = .GlobalEnv)
 }
 
-convert_day2mon <- function(df2, ..., fun = colMeans2, max.nmiss = 3) {
+convert_day2mon <- function(df2, varname = "RH_avg", ..., 
+  fun = colMeans2, max.nmiss = 3) 
+{
   ## daily转monthly
   date_max <- max(df2$date)
   date_min <- min(df2$date)

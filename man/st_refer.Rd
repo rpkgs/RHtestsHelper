@@ -5,7 +5,7 @@
 \alias{st_refer_opt}
 \title{get the potential reference sites}
 \usage{
-st_refer(st, dist, mat_month)
+st_refer(st, mat_month, .parallel = FALSE, nsite = NULL)
 
 st_refer_opt(st_refs, sites_worst)
 }
@@ -13,13 +13,13 @@ st_refer_opt(st_refs, sites_worst)
 \item{st}{A dataframe of the sites location and covering period information,
 with the \code{nrow=nsite}.}
 
-\item{dist}{A distance matrix with the dimension of \verb{[nsite, nsite]}}
-
 \item{mat_month}{The monthly input data matrix, with the dimension of \verb{[ntime, nsite]}}
 
 \item{st_refs}{object returned by \code{\link[=st_refer]{st_refer()}}}
 
 \item{sites_worst}{sites where TP is confirmed by both of monthly and yearly data}
+
+\item{dist}{A distance matrix with the dimension of \verb{[nsite, nsite]}}
 }
 \description{
 get the potential reference sites

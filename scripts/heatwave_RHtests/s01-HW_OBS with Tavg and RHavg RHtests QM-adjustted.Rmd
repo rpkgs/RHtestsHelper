@@ -42,7 +42,7 @@ if (run_RHtests) {
   saveRDS(res2, glue("OUTPUT/RHtests_{varname}_monthly_2138.RDS"))
 
   ## merge yearly and monthly TP
-  info <- TP_merge_ym(res2)
+  info <- TP_mergeYM_sites(res2)
   info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
   sites_adj <- info2[, .N, .(site)][, site]
   res_adj <- res[sites_adj]

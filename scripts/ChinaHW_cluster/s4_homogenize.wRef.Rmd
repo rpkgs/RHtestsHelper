@@ -4,6 +4,8 @@ library(lubridate)
 library(RHtests)
 library(tidymet)
 library(tidyfst)
+ErrorMSG = ""
+
 # library(latticeGrob)
 devtools::load_all()
 devtools::load_all("../RHtests.R")
@@ -14,37 +16,42 @@ split_site <- function(d) {
 ```
 
 ```{r}
-file_met <- glue("OUTPUT/INPUTS_mete2481_{varname}_daily (195101-201912).rda")
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022.fst"
+df = import_fst(f_input)
+sites <- df[, .N, .(site)]$site
+st = st_met2481[site %in% sites]
 
-## 修复了26/51个站点
-sites <- st$site %>% as.character()
-nsite <- length(sites)
-file_RHtests_daily <- glue("OUTPUT/RHtests_mete{nsite}_{varname}_QMadjusted.RDS")
-file_RHtests_daily_withRef <- glue("OUTPUT/RHtests_mete{nsite}_{varname}_QMadjusted withRef.RDS")
+varname <- "RH_avg"
 
-## 1. PMF test -----------------------------------------------------------------
-lst <- df2[, .SD, .SDcols = c("site", "date", varname)] %>% split_site(d)
+lst = select(df, all_of(c("site", "date", varname))) %>% split_site()
+all.equal(as.character(sites), names(lst))
+
+f_mon = glue("./OUTPUT/ChinaHI/RHtests_RH_avg_monthly_v20230227.RDS")
+res2 <- readRDS(f_mon)
+
+info  <- TP_mergeYM_sites(res2)
+info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
+sites_adj = info2[, .N, .(site)][, site]
 ```
 
 ## 1. homogenization without refer
-```{r}
-if (!file.exists(file_RHtests_daily) || overwrite) {
-  system.time(res <- homogenize.wRef.list(lst, st_moveInfo))
-  saveRDS(res, file_RHtests_daily)
-}
-res <- readRDS(file_RHtests_daily)
-
-TP_info <- TP_merge(res)
-sites_worst <- names(TP_info) # 非均一化的站点
-```
 
 ## 2. homogenization with refer
 
 ### 2.1. 挑选参考站
 ```{r}
-find_refer(df2, st, varname, sites_worst)
+mat_mon = convert_day2mon(df, varname)
 
+if (!isTRUE(all.equal(colnames(mat_mon), as.character(st$site)))) {
+  stop("check site names order first!")
+}
+
+st_refs <- st_refer(st, mat_mon, nsite = NULL)
+st_refs_opt <- st_refer_opt(st_refs, sites_adj)
+d_refs <- melt_list(st_refs_opt, "target")
+# find_refer(df2, st, varname, sites_worst)
 sites_miss <- setdiff(sites, d_refs$target) %>% as.character()
+
 # monthly和yearly一致的，884 TPs
 # temp <- RHtests_main(df2, st_moveInfo = info2_1961_2018, sitename, varname)
 
@@ -55,31 +62,38 @@ sites_miss <- setdiff(sites, d_refs$target) %>% as.character()
 ```
 
 ### 2.2. 2.2 均一化检测
+
+? 如果WithRef未检测到TP，withRef是否有可能检测到？
+
 ```{r}
-if (!file.exists(file_RHtests_daily_withRef)) {
-  inds <- d_refs$target %>% set_names(seq_along(.), .)
-  m <- nrow(d_refs)
-  res_ref <- foreach(i = inds[1:m]) %dopar% {
-    runningId(i)
-    # if (i == 2) break()
-    site_target <- d_refs$target[i]
-    site_refer <- d_refs$site[i]
-    i_t <- match(site_target, sites)
-    i_r <- match(site_refer, sites)
+# InitCluster(10)
+file_RHtests_daily_withRef = "./OUTPUT/ChinaHI/RHtests_daily_withRef_v20230227.RDS"
+# if (!file.exists(file_RHtests_daily_withRef)) {
+inds <- d_refs$target %>% set_names(seq_along(.), .)
+m <- nrow(d_refs)
 
-    d_target <- lst[[i_t]]
-    d_refer <- lst[[i_r]]
-    d <- merge(d_target, d_refer %>% set_names(c("date", "ref")), all.x = TRUE)
-    metadata <- get_metadata(d, site_target, st_moveInfo)
+res_ref <- foreach(i = inds, icount()) %dopar% {
+  runningId(i)
+  # if (i == 2) break()
+  site_target <- d_refs$target[i]
+  site_refer <- d_refs$site[i]
+  i_t <- match(site_target, sites)
+  i_r <- match(site_refer, sites)
 
-    tryCatch({
-      r <- homogenize.wRef(d, metadata)
-    }, error = function(e) {
-      message(sprintf("[%d] %s", i, e$message))
-    })
-  }
-  saveRDS(res_ref, file = file_RHtests_daily_withRef)
+  d_target <- lst[[i_t]]
+  d_refer <- lst[[i_r]]
+  d <- merge(d_target, d_refer %>% set_names(c("date", "ref")), all.x = TRUE)
+  
+  metadata <- get_metadata(d, site_target)
+
+  tryCatch({
+    r <- homogenize.wRef(d, metadata)
+  }, error = function(e) {
+    message(sprintf("[%d] %s", i, e$message))
+  })
 }
+saveRDS(res_ref, file = file_RHtests_daily_withRef)
+# }
 ```
 
 ## 3. 数据清洗

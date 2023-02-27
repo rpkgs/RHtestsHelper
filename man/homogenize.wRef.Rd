@@ -2,9 +2,12 @@
 % Please edit documentation in R/homogenize.wRef.R
 \name{homogenize.wRef}
 \alias{homogenize.wRef}
+\alias{homogenize.wRef.list}
 \title{Homogeneous time series data with reference series}
 \usage{
 homogenize.wRef(d, metadata = NULL, prefix = "./OUTPUT/example01")
+
+homogenize.wRef.list(lst, st_moveInfo, .parallel = FALSE, .debug = FALSE)
 }
 \arguments{
 \item{d}{A data.frame of the inputdata:
@@ -15,8 +18,19 @@ be used.
 be used.
 }}
 
+\item{lst}{List of multiple sites data.frame
+The data.frame of each site:
+\itemize{
+\item if 3 columns, they are \code{date}, \code{varname} and \code{ref}, and homo with ref will
+be used.
+\item if 2 columns, they are \code{date}, \code{varname}, and homo without ref will
+be used.
+}}
+
+\item{st_moveInfo}{A data.frame with the site relocation moving information}
+
 \item{metedata}{A data.frame with column date indicating turning point}
 }
 \description{
-Homogeneous time series data with reference series
+Get the turning points of monthly and yearly data
 }
