@@ -4,7 +4,7 @@
 #' with the `nrow=nsite`.
 #' @param dist A distance matrix with the dimension of `[nsite, nsite]`
 #' @param mat_month The monthly input data matrix, with the dimension of `[ntime, nsite]`
-#'
+#' 
 #' @export
 st_refer <- function(st, dist, mat_month) {
   sites <- st$site
@@ -120,17 +120,7 @@ find_refer <- function(df2, st, varname = "Tavg", sites_worst) {
     coord <- st[, .(lon = deg2dec(lon), lat = deg2dec(lat))] %>% as.matrix()
     dist <- rdist.earth(coord)
 
-    date_max <- max(df2$date)
-    date_min <- min(df2$date)
-    date <- seq(ymd(date_min), ymd(date_max), by = "day")
-    mat <- dcast(df2, date ~ site, value.var = varname)[, -1] %>% as.matrix()
-
-    ## when aggregate daily to monthly scale, if more than 3 invalid values, monthly
-    # value will be set to NA
-    mat_month <- apply_col(mat, by = format(date, "%Y-%m-01"))
-    mat_month_miss <- apply_col(is.na(mat), by = format(date, "%Y-%m-01"), colSums2)
-    mat_month[mat_month_miss >= 3] <- NA_real_
-
+    
     ## searching potential reference sites
     # check site names order first
     if (!isTRUE(all.equal(st$site %>% as.character(), colnames(mat)))) {
@@ -144,4 +134,19 @@ find_refer <- function(df2, st, varname = "Tavg", sites_worst) {
     save(st_refs, st_refs_opt, d_refs, file = file)
   }
   load(file, envir = .GlobalEnv)
+}
+
+convert_day2mon <- function(df2, ..., fun = colMeans2, max.nmiss = 3) {
+  ## daily转monthly
+  date_max <- max(df2$date)
+  date_min <- min(df2$date)
+  date <- seq(ymd(date_min), ymd(date_max), by = "day")
+  mat <- dcast(df2, date ~ site, value.var = varname)[, -1] %>% as.matrix()
+  
+  ## when aggregate daily to monthly scale, if more than 3 invalid values, monthly
+  # value will be set to NA
+  mat_month <- apply_col(mat, by = format(date, "%Y-%m-01"))
+  mat_month_miss <- apply_col(is.na(mat), by = format(date, "%Y-%m-01"), fun)
+  mat_month[mat_month_miss > max.nmiss] <- NA_real_
+  mat_month
 }

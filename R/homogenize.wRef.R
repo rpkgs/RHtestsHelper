@@ -31,7 +31,7 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
   } else {
     ref_year <- ref_month <- ref_day <- NULL
   }
-
+  
   r_month <- RHtests_process(l$month[, I_base], ref_month, metadata, prefix, is_plot = FALSE, maxgap = 366)
   r_year <- RHtests_process(l$year[, I_base], ref_year, metadata, prefix, is_plot = FALSE, maxgap = 366)
 

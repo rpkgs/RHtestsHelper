@@ -42,3 +42,7 @@ last <- function(x) {
 get_dof <- function(.parallel = FALSE) {
   ifelse(.parallel, `%dopar%`, `%do%`)
 }
+
+#' @importFrom matrixStats colMeans2
+#' @export
+matrixStats::colMeans2

@@ -10,9 +10,13 @@ Authors@R:
 Description: What the package does (one paragraph).
 License: MIT + file LICENSE
 Imports: 
-    dplyr
+    dplyr, 
+    matrixStats, 
+    RHtests
 Suggests: 
     testthat, plyr
+Remotes:
+    rpkgs/RHtests
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
