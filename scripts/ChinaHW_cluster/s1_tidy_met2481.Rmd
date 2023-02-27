@@ -74,10 +74,23 @@ export_fst(data, f_raw, 50)
 ## 0.2. 读取数据
 ```{r}
 data = import_fst(f_raw)
+
+varnames = c("site", "date", "RH_avg", "RH_min", "Tair_avg", "Tair_max", "Tair_min", "Pa_avg", "Pa_max", "Pa_min")
+
+f_2020 = path.mnt("Z:/DATA/China/ChinaMet_hourly_mete2000/data-raw/China_Mete2000_daily_HImete_2020-2022.csv")
+data_2020 = fread(f_2020) %>% 
+  rename_with(~ gsub("RHU", "RH", .) %>% gsub("mean", "avg", .)) %>% 
+  select(all_of(varnames)) %>% 
+  mutate(across(starts_with("Pa_"), ~ divide_by(., 10))) %>%  # Pa to kPa
+  cal_heatindex()
 # 挑选年份完成的数据
 
-info = data[, get_siteInfo(.SD), site]
-sites_bad <- info[perc_miss >= 2, site]
+df = rbind(data, data_2020)
+setkeyv(df, c("site", "date"))
+
+export_fst(df, "data-raw/INPUT/INPUT_met2481_Tmax&RHmax_for_HImax_raw_1951-2022.fst")
+# info = data[, get_siteInfo(.SD), site]
+# sites_bad <- info[perc_miss >= 2, site]
 ```
 
 > 可以看到一些缺失比较多的站点

@@ -1,0 +1,81 @@
+```{r}
+library(Ipaper)
+library(lubridate)
+library(RHtests)
+library(missInfo)
+
+devtools::load_all()
+devtools::load_all("../RHtests.R")
+```
+
+
+```{r}
+lst_org = readRDS("./OUTPUT/RHtests_RHavg_monthly_2138_V2.RDS")
+lst_new = readRDS("./OUTPUT/RHtests_RHavg_monthly_2138_V3.RDS")
+```
+
+```{r}
+sites_org <- names(lst_org) %>% as.integer()
+sites_new <- names(lst_new) %>% as.integer()
+
+length(sites_org)
+length(sites_new)
+
+sites_good = intersect(sites_new, sites_org) #%>% length()
+sites_bad = setdiff(sites_new, sites_org)
+```
+
+```{r}
+sitename = sites_bad[4]
+
+l_org <- lst_org[[sitename]] # %>% map("data") %>% print()
+l_new <- lst_new[[sitename]] # %>% map("data") %>% print()
+
+l_org %>% map("TP") %>% print()
+l_new %>% map("TP") %>% print()
+```
+
+```{r}
+# 这部分结果还可以，一模一样
+for (sitename in sites_good) {
+  l_org = lst_org[[sitename]] # %>% map("data") %>% print()
+  l_new = lst_new[[sitename]] # %>% map("data") %>% print()
+
+  # all.equal(l_new$year, l_org$year)
+  is_good = all.equal(l_new$year, l_org$year)
+  if (!is_good) {
+    print(sitename)
+  }
+}
+```
+
+
+## 先在monthly尺度上判断，这个点要不要进行均一化处理
+```{r}
+varname = "RHavg"
+# devtools::load_all("../RHtests.R")
+sitename <- sites_bad[110]
+
+d = df[site == sitename, .(date, RHavg)]
+l = RHtests_input(d)
+
+r <- homogenize_monthly(df, st_moveInfo, sitename, varname)[[1]]
+
+plot_output(r$year$data, glue("{varname}_year.pdf"), show=TRUE)
+plot_output(r$month$data, glue("{varname}_month.pdf"), show = TRUE)
+
+# 1961年之前观测标准可能不一样
+TP = r$month$TP
+r_daily <- RHtests_stepsize(l$day, NULL, TP, prefix = "./OUTPUT/daily", is_plot = FALSE)
+# plot_output(r_daily$data, "r_day.pdf", show=TRUE)
+
+meta <- st_moveInfo[site == sitename, ]
+```
+
+```{r}
+# metadata
+r$year$TP
+r$month$TP
+meta
+# TP_adjust 出现了错误
+```

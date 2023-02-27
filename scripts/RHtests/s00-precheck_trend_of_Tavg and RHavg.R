@@ -30,6 +30,7 @@ if (!file.exists(file_mete_monthly)) {
     ## 过滤掉缺失过多的年份和月份
     # - monthly
     #   1. 月缺测数大于3设置为NA
+
     # - yearly
     #   1. 需有12个月的观测
     #   2. 年总缺测少于30
@@ -73,17 +74,6 @@ if (!file.exists(file_mete_monthly)) {
     load(file_mete_monthly)
 }
 
-## 不同站点的
-# df = df[site %in% sites]
-# missinfo: rm site-year with missing values greater than 30 days
-# info = df[, .(n_miss = sum(is.na(HI))), .(site, year)]
-# df_mat = dcast(df, date~site, value.var = "HI")
-# r <- HW_index(df_mat, probs = probs)
-# r = info[n_miss < 30, 1:2] %>% merge(r, by = c("site", "year"))
-#     saveRDS(r, file_HW)
-# } else {
-#     r = readRDS(file_HW)
-# }
 
 ## urban and rural trend
 {
@@ -145,6 +135,8 @@ grid_clip@data <- d_cont[, c(1, 3, 5)]
         theme_lattice(plot.margin = c(0.5, 6, 0.5, 0.5))
     write_fig(p, "Urban contribution to HI, Tavg and RH.pdf", 8, 6)
 }
+
+
 
 ## 测试华北平原的异常点
 library(sp2)

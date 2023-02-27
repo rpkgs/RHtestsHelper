@@ -9,15 +9,17 @@
 #' @export
 fix_uncontinue <- function(df, complete_year = TRUE) {
     # df %>% group_by(site) %>% group_modify(fix_uncontinue_site)
-    df[, fix_uncontinue_site(.SD), site] # about 2x faster
+    df[, fix_uncontinue_site(.SD, complete_year = complete_year), .(site)] # about 2x faster
     # ddply(df, .(site), fix_uncontinue_site, .progress = "text")
 }
 
 
 fix_uncontinue_site <- function(d, ..., complete_year = TRUE) {
   n <- nrow(d)
-  date_begin <- d$date[1]
-  date_end <- d$date[n]
+  # if (n <= 365*4) return(NULL)
+
+  date_begin <- d$date %>% min()
+  date_end <- d$date %>% max()
   
   if (complete_year) {
     if (month(date_begin) != 1) {
@@ -27,6 +29,8 @@ fix_uncontinue_site <- function(d, ..., complete_year = TRUE) {
       date_end <- make_date(year(date_end) - 1, 12, 31)
     }
   }
+  # browser()
+  # print2(date_begin, date_end)
   temp <- data.table(date = seq.Date(date_begin, date_end, by = "day"))
   merge(d, temp, c("date"), all.y = TRUE) #%>% select(-site)
 }

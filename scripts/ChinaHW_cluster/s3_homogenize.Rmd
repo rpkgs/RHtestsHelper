@@ -1,0 +1,73 @@
+```{r}
+library(Ipaper)
+library(lubridate)
+library(RHtests)
+library(tidymet)
+library(tidyfst)
+# library(latticeGrob)
+devtools::load_all()
+devtools::load_all("../RHtests.R")
+```
+
+```{r}
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022.fst"
+# export_fst(df2, f_input)
+df = import_fst(f_input)
+
+sites <- df[, .N, .(site)]$site
+```
+
+```{r}
+# InitCluster(10)
+varname <- "Tair_avg"
+version <- "v20230227"
+f_month <- glue("OUTPUT/RHtests_{varname}_monthly_{version}.RDS")
+f_day <- glue("OUTPUT/RHtests_{varname}_QMadjusted_{version}.RDS")
+
+if (!file.exists(f_month)) {
+  sink("log.txt")
+  # 先获取一个粗略的结果
+  res <- homogenize_monthly(df, st_moveInfo, sites, varname, .parallel = TRUE)
+  res2 <- RHtests_rm_empty(res)
+  saveRDS(res2, f_month)
+  sink(NULL)
+} else {
+  res2 = readRDS(f_month)
+}
+
+# merge yearly and monthly TP
+info  <- TP_merge_ym(res2)
+
+# 一致的站点
+info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
+sites_adj = info2[, .N, .(site)][, site]
+
+res_adj = res2[sites_adj]
+lst_TP <- split(info2, info2$site)
+
+out <- homogenize_daily(df, lst_TP, varname, .parallel = TRUE)
+saveRDS(out, f_day)
+```
+
+```{r}
+# profvis::profvis({
+# system.time({
+# px <- proffer::pprof({
+  # out <- homogenize_daily(df, lst_TP, varname, nsite = 10)
+# })
+
+l = get_Input(df, sitename, varname)
+
+prefix <- "./OUTPUT/example01"
+r_month <- RHtests_process(l$month, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
+r_year <- RHtests_process(l$year, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
+
+plot_output(r_month$data, "month.pdf", show=TRUE)
+plot_output(r_year$data, "year.pdf", show = TRUE)
+```
+
+## 检查`TP_merge_ym`
+
+```{r}
+
+```

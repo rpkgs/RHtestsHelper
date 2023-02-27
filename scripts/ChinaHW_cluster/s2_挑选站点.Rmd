@@ -1,0 +1,135 @@
+```{r}
+library(Ipaper)
+library(dplyr)
+# library(data.table)
+library(hydroTools)
+library(tidyfst)
+library(tidymet)
+
+devtools::load_all()
+
+f_raw <- "data-raw/INPUT/INPUT_met2481_Tmax&RHmax_for_HImax_raw_1951-2022.fst"
+
+rm_TailNaN <- function(d) {
+  ind <- d[, which.notna(RH_avg + Tair_avg + Tair_max)]
+
+  i_begin <- first(ind)
+  i_end <- last(ind)
+
+  d[i_begin:i_end, ]
+}
+
+get_siteInfo <- function(d) {
+  ind <- d[, which.notna(RH_avg + Tair_avg + Tair_max)]
+  n_all <- nrow(d)
+  n_miss <- n_all - length(ind)
+
+  data.table(
+    date_begin = min(d$date),
+    date_end = max(d$date),
+    n_all, n_valid = n_all - n_miss, n_miss, perc_miss = n_miss / n_all * 100
+  )
+}
+```
+
+## 0.1. 数据预处理，选择温度和湿度数据
+
+```{r}
+df <- import_fst(f_raw)
+
+## 首先把时间序列调补完成，缺失值填NA
+.info <- df[, get_siteInfo(.SD), site]
+sites_good <- .info[n_all >= 366 * 10, site]
+.tmp <- df[date >= make_date(1961, 1, 1), ] %>% .[site %in% sites_good]
+.tmp$date %<>% as.Date()
+df2 <- fix_uncontinue(.tmp, complete_year = TRUE)
+
+
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022.fst"
+export_fst(df2, f_input)
+```
+
+> 检查缺失比例超过2%的站点
+```{r}
+## 删除缺失过多的站点
+# 1. 数据观测少于30年的站点
+# 2. 删除1961-1990期间少于15年的站点
+# 3. 缺测比例大于1%的站点
+# 4. daily->monthly过程中，缺少3个值则判为缺测，
+info_all <- df2[, get_siteInfo(.SD), site]
+
+info_1960 <- df2[date >= make_date(1981) & date <= make_date(2010, 12, 31), get_siteInfo(.SD), site]
+info_1980 <- df2[date >= make_date(1961) & date <= make_date(1990, 12, 31), get_siteInfo(.SD), site]
+
+# 气候态至少有20年的数据
+# 2,230，这一步挑选出来了这么多站点
+info_cli <- merge(info_1960[n_valid >= 365 * 20, ], info_1980[n_valid >= 365 * 20, ], by = c("site"))
+
+sites <- df2$site %>% unique_sort()
+
+info_miss <- foreach(sitename = sites, i = icount()) %do%
+  {
+    runningId(i, 200)
+    d <- df2[site == sitename, ]
+    missInfo(d$HI_max, d$date)$info
+  } %>% melt_list(site = sites)
+# info_miss$info %<>% unlist()
+# 详细缺测信息
+# info_miss <- df2[, missInfo(HI_max, date)$info, site]
+# info_miss %$% set_names(info_miss$detailedInfo, site)
+
+info_bad <- info_all[site %in% info_cli$site, ] %>%
+  merge(info_miss[, .(site, gap_min, gap_max, info, detailedInfo)]) %>%
+  subset(perc_miss >= 2) %>%
+  .[order(-perc_miss)]
+
+sink("missInfo.log")
+info_bad %$% set_names(detailedInfo, site) %>% print()
+sink(NULL)
+
+
+# 移除91个站点
+sites_bad <- info_bad$site
+
+info_good <- info_all[site %in% info_cli$site, ] %>%
+  subset(perc_miss < 2)
+```
+
+
+```{r}
+data = df2[, .(site, date, y = RH_avg)]
+
+data_mon = data[, .(n_miss = sum(is.na(y)), y = mean(y, na.rm = TRUE)), 
+  .(site, date = date_ym(date))]
+data_year_raw = data_mon[, .(n_miss = sum(n_miss > 3), y = mean(y, na.rm = TRUE)), 
+  .(site, year = year(date))]
+
+## 过滤掉缺失过多的年份和月份
+# - monthly
+#   1. 月缺测数大于3设置为NA
+# - yearly
+#   1. 需有12个月的观测
+#   2. 需要有至少30年的数据
+.tmp = data_year_raw[n_miss == 0, ]
+sites_good = .tmp[, .N, .(site)][N >= 50, site]
+data_year = .tmp[site %in% sites_good, ]
+
+
+trend_year = data_year[, c(as.list(slope_p(y, year)), 
+  year_begin = min(year), 
+  year_end = max(year), 
+  n_miss = max(year) - min(year) + 1 - .N), .(site)]
+
+library(gg.layers)
+library(ggplot2)
+
+ggplot(trend_year, aes(y = slope)) + 
+  geom_boxplot2()
+
+# 几乎全部都是负的趋势
+# boxplot(trend_year$slope)
+# 做一个数据开始年份和结束年份的图
+
+save(df_year2, df_year2.anorm, df_month, trend_year.lm, trend_year.mk, st, file = file_mete_monthly)
+saveRDS(df_sel, "OUTPUT/INPUT_HImete_daily_st2138.RDS")
+```
