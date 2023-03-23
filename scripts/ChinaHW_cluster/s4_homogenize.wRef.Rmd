@@ -1,129 +1,20 @@
 ```{r}
-library(Ipaper)
-library(lubridate)
-library(RHtests)
-library(tidymet)
+#! /usr/bin/Rscript --no-init-file
+# Dongdong Kong ----------------------------------------------------------------
+# Copyright (c) 2022 Dongdong Kong. All rights reserved.
+source('scripts/ChinaHW_cluster/main.R')
+
 library(tidyfst)
-ErrorMSG = ""
-
-# library(latticeGrob)
-devtools::load_all()
-devtools::load_all("../RHtests.R")
-
-split_site <- function(d) {
-  split(select(d, -site), d$site)
-}
-```
-
-```{r}
 f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022.fst"
 df = import_fst(f_input)
-sites <- df[, .N, .(site)]$site
-st = st_met2481[site %in% sites]
 
-varname <- "RH_avg"
-
-lst = select(df, all_of(c("site", "date", varname))) %>% split_site()
-all.equal(as.character(sites), names(lst))
-
-f_mon = glue("./OUTPUT/ChinaHI/RHtests_RH_avg_monthly_v20230227.RDS")
-res2 <- readRDS(f_mon)
-
-info  <- TP_mergeYM_sites(res2)
-info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
-sites_adj = info2[, .N, .(site)][, site]
+main_RHtests_met2481("Tair_max")
+main_RHtests_met2481("Tair_avg")
+# main_RHtests_met2481("RH_avg")
 ```
 
-## 1. homogenization without refer
-
-## 2. homogenization with refer
-
-### 2.1. 挑选参考站
 ```{r}
-mat_mon = convert_day2mon(df, varname)
 
-if (!isTRUE(all.equal(colnames(mat_mon), as.character(st$site)))) {
-  stop("check site names order first!")
-}
-
-st_refs <- st_refer(st, mat_mon, nsite = NULL)
-st_refs_opt <- st_refer_opt(st_refs, sites_adj)
-d_refs <- melt_list(st_refs_opt, "target")
-# find_refer(df2, st, varname, sites_worst)
-sites_miss <- setdiff(sites, d_refs$target) %>% as.character()
-
-# monthly和yearly一致的，884 TPs
-# temp <- RHtests_main(df2, st_moveInfo = info2_1961_2018, sitename, varname)
-
-# 剩余的153个站点中，64个存在显著的突变点，21个不存在突变点，其余monthly和yearly数据的突变点不一致
-#  81 not ref-sites
-# 156 not ref-sites, sites_worst
-# 308 not ref-sites, sites_worse
-```
-
-### 2.2. 2.2 均一化检测
-
-? 如果WithRef未检测到TP，withRef是否有可能检测到？
-
-```{r}
-# InitCluster(10)
-file_RHtests_daily_withRef = "./OUTPUT/ChinaHI/RHtests_daily_withRef_v20230227.RDS"
-# if (!file.exists(file_RHtests_daily_withRef)) {
-inds <- d_refs$target %>% set_names(seq_along(.), .)
-m <- nrow(d_refs)
-
-res_ref <- foreach(i = inds, icount()) %dopar% {
-  runningId(i)
-  # if (i == 2) break()
-  site_target <- d_refs$target[i]
-  site_refer <- d_refs$site[i]
-  i_t <- match(site_target, sites)
-  i_r <- match(site_refer, sites)
-
-  d_target <- lst[[i_t]]
-  d_refer <- lst[[i_r]]
-  d <- merge(d_target, d_refer %>% set_names(c("date", "ref")), all.x = TRUE)
-  
-  metadata <- get_metadata(d, site_target)
-
-  tryCatch({
-    r <- homogenize.wRef(d, metadata)
-  }, error = function(e) {
-    message(sprintf("[%d] %s", i, e$message))
-  })
-}
-saveRDS(res_ref, file = file_RHtests_daily_withRef)
-# }
-```
-
-## 3. 数据清洗
-```{r}
-res_ref <- readRDS(file_RHtests_daily_withRef)
-## TPs 不为空的站点，采用homogenize.wRef修正；其余的采用no-ref进行修正
-
-## 1. 在含有reference sites的站点中---------------------------------------------
-# 2325站点中，1404站点存在突变点，其余921站点保持不变
-TPs <- map(res_ref, ~ .$day$TP)
-ind_fix <- which.notnull(TPs)
-
-d_ref <- map(res_ref[ind_fix], ~ .$day$data[, .(date, QM_adjusted)]) %>%
-  melt_list("site")
-
-## 2. 其余没有reference sites的站点中-------------------------------------------
-# 156站点中，63站点存在突变点
-d_noref <- res[sites_miss] %>%
-  map(~ .$day$data[, .(date, QM_adjusted)]) %>%
-  rm_empty() %>%
-  melt_list("site")
-df_fixed <- rbind(d_ref, d_noref) %>% set_colnames(c("site", "date", varname))
-
-## merge the unfixed and fixed
-sites_fixed <- df_fixed$site %>% unique()
-
-df_final <- rbind(df_fixed, df2[!(site %in% sites_fixed), ])
-date <- Sys.Date() %>%
-  format() %>%
-  gsub("-", "", .)
-fwrite(df_final, glue("OUTPUT/OUTPUT_mete2481_{varname}_RHtests_fixed ({date}).csv"))
-df_final
+# tidymet::st_met2481
+# missInfo::st_met2481
 ```

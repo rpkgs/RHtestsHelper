@@ -125,11 +125,12 @@ library(ggplot2)
 
 ggplot(trend_year, aes(y = slope)) + 
   geom_boxplot2()
-
 # 几乎全部都是负的趋势
-# boxplot(trend_year$slope)
-# 做一个数据开始年份和结束年份的图
 
-save(df_year2, df_year2.anorm, df_month, trend_year.lm, trend_year.mk, st, file = file_mete_monthly)
-saveRDS(df_sel, "OUTPUT/INPUT_HImete_daily_st2138.RDS")
+# save(df_year2, df_year2.anorm, df_month, trend_year.lm, trend_year.mk, st, file = file_mete_monthly)
+# saveRDS(df_sel, "OUTPUT/INPUT_HImete_daily_st2138.RDS")
 ```
+
+## TODO
+
+- [ ] 做一个数据开始年份和结束年份的图

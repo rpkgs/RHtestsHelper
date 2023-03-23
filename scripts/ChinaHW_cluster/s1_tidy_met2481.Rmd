@@ -1,3 +1,5 @@
+> 完成两套数据的拼接
+
 ```{r}
 library(Ipaper)
 library(dplyr)
@@ -99,3 +101,7 @@ info_miss = data2[site %in% sites_bad,
   missInfo(RH_avg + Tair_avg + Tair_max, date, site[1])$info, site]
 info_miss
 ```
+
+
+## 检查原始数据
+

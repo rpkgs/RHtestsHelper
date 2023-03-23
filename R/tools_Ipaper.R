@@ -38,6 +38,11 @@ last <- function(x) {
   x[length(x)]
 }
 
+#' @importFrom dplyr select
+split_site <- function(d) {
+  split(select(d, -site), d$site)
+}
+
 #' @importFrom Ipaper %dopar% %do%
 get_dof <- function(.parallel = FALSE) {
   ifelse(.parallel, `%dopar%`, `%do%`)
@@ -46,3 +51,20 @@ get_dof <- function(.parallel = FALSE) {
 #' @importFrom matrixStats colMeans2
 #' @export
 matrixStats::colMeans2
+
+convert_day2mon <- function(
+    df2, varname = "RH_avg", ...,
+    fun = colMeans2, max.nmiss = 3) {
+  ## daily转monthly
+  date_max <- max(df2$date)
+  date_min <- min(df2$date)
+  date <- seq(ymd(date_min), ymd(date_max), by = "day")
+  mat <- dcast(df2, date ~ site, value.var = varname)[, -1] %>% as.matrix()
+
+  ## when aggregate daily to monthly scale, if more than 3 invalid values, monthly
+  # value will be set to NA
+  mat_month <- apply_col(mat, by = format(date, "%Y-%m-01"))
+  mat_month_miss <- apply_col(is.na(mat), by = format(date, "%Y-%m-01"), fun)
+  mat_month[mat_month_miss > max.nmiss] <- NA_real_
+  mat_month
+}

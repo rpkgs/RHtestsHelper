@@ -7,7 +7,7 @@
 \usage{
 homogenize.wRef(d, metadata = NULL, prefix = "./OUTPUT/example01")
 
-homogenize.wRef.list(lst, st_moveInfo, .parallel = FALSE, .debug = FALSE)
+homogenize.wRef.list(lst, st_moveInfo, ..., .parallel = FALSE, .debug = FALSE)
 }
 \arguments{
 \item{d}{A data.frame of the inputdata:

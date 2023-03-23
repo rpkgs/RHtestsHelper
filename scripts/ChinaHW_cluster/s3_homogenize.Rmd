@@ -55,6 +55,8 @@ saveRDS(out, f_day)
 # px <- proffer::pprof({
   # out <- homogenize_daily(df, lst_TP, varname, nsite = 10)
 # })
+varname = "RH_avg"
+sitename = 50247 #"sites[50247]
 l = get_Input(df, sitename, varname)
 
 prefix <- "./OUTPUT/example01"
