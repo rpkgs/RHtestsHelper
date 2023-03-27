@@ -8,6 +8,30 @@ ErrorMSG = ""
 devtools::load_all()
 devtools::load_all("../RHtests.R")
 
+# 有5个站点出现错误。
+# # [data.table]:
+# # A data frame: 6 × 14
+#    site date       RH_avg RH_min Tair_avg Tair_max Tair_min Pa_avg   Pa_max Pa_min q_mean RH_min2
+#   <int> <date>      <dbl>  <int>    <dbl>    <dbl>    <dbl>  <dbl>    <dbl>  <dbl>  <dbl>   <dbl>
+# 1 50548 2022-09-14 41738      35   41683.   999998      8.6   98.5     98.8   98.4  -1.65  38006.
+# 2 54416 2022-12-01 43518.     12   43471.   999998    -12.7 4446.  100000.   102.   -1.65  39786.
+# 3 54916 2022-08-04 43549.     49   43509.   999998     29.5   99.9    100.    99.8  -1.65  39818.
+# 4 58942 2022-10-06 41750.     76   41689.   999998     22    101.     101.   101.   -1.65  38018.
+# 5 59265 2020-05-13 47699.     65   47644.   999998     23.2 4857.  100000.    99.5  -1.65  43966.
+# 6 59265 2020-09-21 41752.     64   41693.   999998     24.9 4262.  100000.    99.4  -1.65  38020.
+fix_badValues <- function(df) {
+  inds_bad <- df[, which(RH_avg >= 200)]
+  # df[inds_bad, ]
+  df[inds_bad, `:=`(
+    RH_avg = NA_real_,
+    Tair_avg = NA_real_, Tair_max = NA_real_,
+    Pa_avg = NA_real_, Pa_max = NA_real_,
+    q_mean = NA_real_, RH_min2 = NA_real_,
+    HI_max = NA_real_, HI_max_e = NA_real_
+  )]
+  invisible()
+}
+
 ## Input data
 main_RHtests_met2481 <- function(varname = "RH_avg") {
   sites <- df[, .N, .(site)]$site
@@ -23,6 +47,7 @@ main_RHtests_met2481 <- function(varname = "RH_avg") {
   date <- gsub("-", "", format(Sys.Date()))
   version <- glue("RHtests_v{date}")
   version <- "RHtests_v20230228"
+  # version <- "RHtests_v20230327"
 
   f_Ref       = glue("OUTPUT/ChinaHI/{version}_{varname}_st_refer.rda")
   f_noRef_mon = glue("OUTPUT/ChinaHI/{version}_{varname}_noRef_monthly.RDS")
@@ -30,7 +55,7 @@ main_RHtests_met2481 <- function(varname = "RH_avg") {
   f_withRef   = glue("OUTPUT/ChinaHI/{version}_{varname}_withRef_daily.RDS")
 
   f_final     = glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_{version}_{varname}.csv")
-
+  
   # fs = c(f_Ref, f_noRef_mon, f_noRef, f_withRef, f_final)
   # file.exists(fs)
 

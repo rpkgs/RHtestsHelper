@@ -40,21 +40,25 @@ run_noRef <- function(varname) {
   } else {
     res2 = readRDS(f_month)
   }
-  
-  # merge yearly and monthly TP
-  # info <- TP_mergeYM_sites(res2)
-  # info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
-  # sites_adj = info2[, .N, .(site)][, site]
 
-  # # res_adj = res2[sites_adj]
-  # lst_TP <- split(info2, info2$site)
-  # out <- homogenize_daily(df, lst_TP, varname, .parallel = TRUE)
-  # saveRDS(out, f_day)
+  # merge yearly and monthly TP
+  info <- TP_mergeYM_sites(res2)
+  info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
+  sites_adj = info2[, .N, .(site)][, site]
+
+  # res_adj = res2[sites_adj]
+  lst_TP <- split(info2, info2$site)
+  out <- homogenize_daily(df, lst_TP, varname, .parallel = TRUE)
+  saveRDS(out, f_day)
 }
 
 foreach(varname = varnames, i = icount()) %do% {
   run_noRef(varname)
 }
+```
+
+```{r}
+# 只更新部分站点
 ```
 
 

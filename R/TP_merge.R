@@ -43,7 +43,6 @@ TP_mergeYM <- function(x) {
 
     # diff_meta <- difftime(date, meta$date, units = "days") %>% as.numeric()
     # I_meta <- which.min(abs(diff_meta))
-
     # c("kind", "Idc", "date", "Ic", "Nseg", "stepsize", "probL", "probU", "plev", "date_meta", "diff")
     cbind(TP_month[j, ],
       date_year = TP_year$date[I_year], day_year = diff_year[I_year]

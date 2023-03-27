@@ -1,3 +1,8 @@
+## content
+
+- [ ] 粗略挑选站点，去除年份过短的站点
+
+
 ```{r}
 library(Ipaper)
 library(dplyr)
@@ -6,6 +11,7 @@ library(hydroTools)
 library(tidyfst)
 library(tidymet)
 
+source('scripts/ChinaHW_cluster/main.R')
 devtools::load_all()
 
 f_raw <- "data-raw/INPUT/INPUT_met2481_Tmax&RHmax_for_HImax_raw_1951-2022.fst"
@@ -36,16 +42,16 @@ get_siteInfo <- function(d) {
 
 ```{r}
 df <- import_fst(f_raw)
+fix_badValues(df)
 
-## 首先把时间序列调补完成，缺失值填NA
+## 首先把时间序列填补完成，缺失值填NA
 .info <- df[, get_siteInfo(.SD), site]
 sites_good <- .info[n_all >= 366 * 10, site]
 .tmp <- df[date >= make_date(1961, 1, 1), ] %>% .[site %in% sites_good]
 .tmp$date %<>% as.Date()
 df2 <- fix_uncontinue(.tmp, complete_year = TRUE)
 
-
-f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022.fst"
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
 export_fst(df2, f_input)
 ```
 
@@ -114,7 +120,6 @@ data_year_raw = data_mon[, .(n_miss = sum(n_miss > 3), y = mean(y, na.rm = TRUE)
 sites_good = .tmp[, .N, .(site)][N >= 50, site]
 data_year = .tmp[site %in% sites_good, ]
 
-
 trend_year = data_year[, c(as.list(slope_p(y, year)), 
   year_begin = min(year), 
   year_end = max(year), 
@@ -133,4 +138,3 @@ ggplot(trend_year, aes(y = slope)) +
 
 ## TODO
 
-- [ ] 做一个数据开始年份和结束年份的图

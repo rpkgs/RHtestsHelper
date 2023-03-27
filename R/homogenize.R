@@ -69,4 +69,3 @@ RHtests_rm_empty <- function(res) {
   I_left <- intersect(I_left1, I_left2) # %>% sort()
   res[I_left]
 }
-

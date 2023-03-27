@@ -6,6 +6,7 @@ library(dplyr)
 # library(data.table)
 library(hydroTools)
 library(tidyfst)
+library(data.table)
 
 f_raw = "data-raw/INPUT/INPUT_met2481_Tmax&RHmax_for_HImax_1951-2019.fst"
 ```
@@ -93,6 +94,8 @@ setkeyv(df, c("site", "date"))
 export_fst(df, "data-raw/INPUT/INPUT_met2481_Tmax&RHmax_for_HImax_raw_1951-2022.fst")
 # info = data[, get_siteInfo(.SD), site]
 # sites_bad <- info[perc_miss >= 2, site]
+
+## 存在一些异常值，需要调用`fix_badValues`进行处理
 ```
 
 > 可以看到一些缺失比较多的站点
@@ -102,6 +105,16 @@ info_miss = data2[site %in% sites_bad,
 info_miss
 ```
 
-
 ## 检查原始数据
+```r
+library(tidymet)
+# st_met2481
+f_org = "/mnt/z/GitHub/rpkgs/RHtestsHelper/data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022.fst" %>% path.mnt()
 
+## 均一化数据
+# RH_avg, Tair_avg, Tair_max
+f_homo = "/mnt/z/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_RHtests_v20230228_RH_avg.csv" %>% path.mnt()
+
+df = fread(f_homo)
+df_org = import_fst(f_org)
+```
