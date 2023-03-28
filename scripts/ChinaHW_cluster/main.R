@@ -32,8 +32,15 @@ fix_badValues <- function(df) {
   invisible()
 }
 
+date <- gsub("-", "", format(Sys.Date()))
+version <- glue("RHtests_v{date}")
+# version <- "RHtests_v20230228"
+
 ## Input data
-main_RHtests_met2481 <- function(varname = "RH_avg") {
+main_RHtests_met2481 <- function(
+  varname = "RH_avg", 
+  version = "v20230328") 
+{
   sites <- df[, .N, .(site)]$site
   st = st_met2481[site %in% sites]
   
@@ -44,18 +51,11 @@ main_RHtests_met2481 <- function(varname = "RH_avg") {
   }
 
   # 这个是月尺度的结果
-  date <- gsub("-", "", format(Sys.Date()))
-  version <- glue("RHtests_v{date}")
-  version <- "RHtests_v20230228"
-  # version <- "RHtests_v20230327"
-
-  f_Ref       = glue("OUTPUT/ChinaHI/{version}_{varname}_st_refer.rda")
-  f_noRef_mon = glue("OUTPUT/ChinaHI/{version}_{varname}_noRef_monthly.RDS")
-  f_noRef     = glue("OUTPUT/ChinaHI/{version}_{varname}_noRef_daily.RDS")
-  f_withRef   = glue("OUTPUT/ChinaHI/{version}_{varname}_withRef_daily.RDS")
-
-  f_final     = glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_{version}_{varname}.csv")
-  
+  f_stRef     <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_st_refer.rda")  
+  f_noRef_mon <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.RDS")
+  f_noRef_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.RDS")
+  f_Ref_day   <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_withRef_daily.RDS")
+  f_final     <- glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_RHtests_{version}_{varname}.csv")
   # fs = c(f_Ref, f_noRef_mon, f_noRef, f_withRef, f_final)
   # file.exists(fs)
 
@@ -76,7 +76,7 @@ main_RHtests_met2481 <- function(varname = "RH_avg") {
   sites_adj = info2[, .N, .(site)][, site]
 
   ### 2.1. 挑选参考站
-  if (!file.exists(f_Ref)) {
+  if (!file.exists(f_stRef)) {
     mat_mon = convert_day2mon(df, varname)
 
     if (!isTRUE(all.equal(colnames(mat_mon), as.character(st$site)))) {
@@ -90,17 +90,16 @@ main_RHtests_met2481 <- function(varname = "RH_avg") {
 
     sites_miss <- setdiff(sites, d_refs$target) %>% as.character()
     # length(sites_miss)
-    save(st_refs, st_refs_opt, d_refs, sites_miss, file = f_Ref)  
+    save(st_refs, st_refs_opt, d_refs, sites_miss, file = f_stRef)  
   } else {
-    load(f_Ref)
+    load(f_stRef)
   }
 
   ### 2.2. 带有参考站的（withRef）均一化检测
   # ? 如果WithRef未检测到TP，withRef是否有可能检测到？
-  if (!file.exists(f_withRef)) {
+  if (!file.exists(f_Ref_day)) {
     inds <- d_refs$target %>% set_names(seq_along(.), .)
     m <- nrow(d_refs)
-
     ok("Homogenization withRef ...")
 
     res_ref <- foreach(i = inds, icount()) %dopar% {
@@ -123,9 +122,9 @@ main_RHtests_met2481 <- function(varname = "RH_avg") {
         message(sprintf("[%d] %s", i, e$message))
       })
     }
-    saveRDS(res_ref, file = f_withRef)
+    saveRDS(res_ref, file = f_Ref_day)
   } else {
-    res_ref <- readRDS(f_withRef)
+    res_ref <- readRDS(f_Ref_day)
   }
 
   ## 3. 数据清洗
@@ -138,7 +137,7 @@ main_RHtests_met2481 <- function(varname = "RH_avg") {
     melt_list("site")
 
   ### 3.2. without refer, 含有TP的部分
-  res_noRef = readRDS(f_noRef)
+  res_noRef = readRDS(f_noRef_day)
 
   d_noref <- res_noRef[sites_miss] %>%
     map(~ .$data[, .(date, QM_adjusted)]) %>%
