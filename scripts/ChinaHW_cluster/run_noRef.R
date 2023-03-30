@@ -40,6 +40,7 @@ run_noRef <- function(varname) {
   sites_adj = info2[, .N, .(site)][, site]
 
   # res_adj = res2[sites_adj]
+  ## 这一步可能做的不够好
   lst_TP <- split(info2, info2$site)
   out <- homogenize_daily(df, lst_TP, varname, .parallel = TRUE)
   saveRDS(out, f_day)

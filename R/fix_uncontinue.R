@@ -22,15 +22,15 @@ fix_uncontinue_site <- function(d, ..., complete_year = TRUE) {
   date_end <- d$date %>% max()
   
   if (complete_year) {
-    if (month(date_begin) != 1) {
-      date_begin <- make_date(year(date_begin) + 1, 1, 1)
+    if (format(date_begin, "%m-%d") != "01-01") {
+      date_begin <- make_date(year(date_begin), 1, 1)
     }
-    if (month(date_end) != 12) {
-      date_end <- make_date(year(date_end) - 1, 12, 31)
+    if (format(date_end, "%m-%d") != "12-31") {
+      date_end <- make_date(year(date_end), 12, 31)
     }
   }
-  # browser()
   # print2(date_begin, date_end)
+  # browser()
   temp <- data.table(date = seq.Date(date_begin, date_end, by = "day"))
   merge(d, temp, c("date"), all.y = TRUE) #%>% select(-site)
 }

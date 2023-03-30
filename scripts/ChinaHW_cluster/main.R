@@ -68,13 +68,14 @@ main_RHtests_met2481 <- function(
   } else {
     res_noRefMon <- readRDS(f_noRef_mon)
   }
-
-  ### withRef
+  # 获取需要调整的站点
   ok("Merging TPs of yearly and monthly input ...")
-  info  <- TP_mergeYM_sites(res_noRefMon)
+  info <- TP_mergeYM_sites(res_noRefMon)
   info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
   sites_adj = info2[, .N, .(site)][, site]
+  browser()
 
+  ### withRef
   ### 2.1. 挑选参考站
   if (!file.exists(f_stRef)) {
     mat_mon = convert_day2mon(df, varname)
@@ -88,6 +89,7 @@ main_RHtests_met2481 <- function(
     st_refs_opt <- st_refer_opt(st_refs, sites_adj)
     d_refs <- melt_list(st_refs_opt, "target")
 
+    # 这里可能写出了
     sites_miss <- setdiff(sites, d_refs$target) %>% as.character()
     # length(sites_miss)
     save(st_refs, st_refs_opt, d_refs, sites_miss, file = f_stRef)  

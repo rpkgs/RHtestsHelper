@@ -1,0 +1,198 @@
+```{r}
+# source("scripts/ChinaHW_cluster/main.R")
+library(data.table)
+library(tidyfst)
+library(Ipaper)
+library(purrr)
+library(rtrend)
+library(gg.layers)
+library(tidymet)
+library(sf)
+library(ggplot2)
+library(gg.layers)
+library(rcolors)
+
+source("scripts/ChinaHW_cluster/main_vis.R", encoding = "UTF-8")
+source('scripts/ChinaHW_cluster/均一化分析/main_trend.R')
+
+f_org <- "OUTPUT/ChinaHI/Trend/trend_original.rda"
+f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
+```
+
+# 1. 制作年数据
+
+## 1.1. 原始数据
+```{r}
+# InitCluster(10)
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
+df <- import_fst(f_input)
+# main_RHtests_met2481("Tair_max")
+# main_RHtests_met2481("Tair_avg")
+# main_RHtests_met2481("RH_avg")
+varnames <- c("RH_avg", "Tair_avg", "Tair_max", "Tair_min") %>%
+  set_names(., .)
+
+.data <- df %>% select(site, date, all_of(varnames))
+data <- fix_uncontinue(.data) # 每年都是完整的序列
+
+aggregate_year(data, varnames, fout = f_org)
+```
+
+## 1.2. 均一化之后的数据
+
+```{r}
+fs = dir2("./OUTPUT/ChinaHI/", "*.csv")
+lst = map(fs, fread)
+.data = reduce(lst, merge, all = TRUE, by = c("site", "date"))
+.data$date %<>% as.Date()
+data <- fix_uncontinue(.data) # 每年都是完整的序列
+
+aggregate_year(data, varnames, fout = f_homo)
+```
+
+# 2. 趋势
+
+```{r}
+# 加载所有的趋势数据
+fs = c(f_org, f_homo) %>% set_names(c("Raw", "Homogenized"))
+
+data_2014 = foreach(f = fs, i = icount()) %do% {
+  load(f)
+  df = cal_trend(lst_year, year_max = 2014)
+  # df
+} %>% melt_list("type_homo")
+
+data_2022 = foreach(f = fs, i = icount()) %do% {
+  load(f)
+  df = cal_trend(lst_year, year_max = 2022)
+  # df
+} %>% melt_list("type_homo")
+```
+
+## 准备绘图数据
+```{r}
+data = data_2022
+
+pdat <- data[type == "mk" & varname %in% c("Tair_avg", "Tair_max", "RH_avg")] %>%
+  select(-nvalid, -nmiss, -year_begin, -year_end)
+
+d_raw = pdat[type_homo == "Raw"]
+d_homo = pdat[type_homo == "Homogenized"]
+
+if (!all.equal(d_raw[, .(site, varname)], d_homo[, .(site, varname)])) stop("error!")
+
+d_diff = cbind(
+  type_homo = "Homogenized - Raw", 
+  d_raw[, .(site, lon, lat, varname, type)], 
+  slope = d_homo$slope - d_raw$slope, 
+  pvalue = pmax(d_homo$pvalue, d_raw$pvalue)
+)
+
+lev_homo <- c("Raw", "Homogenized", "Homogenized - Raw")
+pdat = rbind(d_raw, d_homo, d_diff) %>% 
+  mutate(type_homo = factor(type_homo, lev_homo))
+```
+
+## 温度的搞定了
+```{r}
+library(patchwork)
+source('scripts/ChinaHW_cluster/main_vis.R', encoding = "UTF-8")
+source("scripts/ChinaHW_cluster/均一化分析/main_trend.R")
+
+filter_homo <- function(pdat2) {
+  df = pdat2[, .(type_homo, site, varname, slope, pvalue)]
+  dat = dcast(df, site + varname ~ type_homo, value.var = "slope")
+  info_adjust = dat[Homogenized != Raw] %>% .[, .(site, varname)]
+  info_good = dat[Homogenized == Raw] %>% .[, .(site, varname)]
+  merge(pdat2, info_adjust) # pdat_final, 只展示均一化后的站点
+}
+
+brks <- c(0.1, 0.2, 0.3, 0.4, 0.5, Inf) %>% c(-Inf, -0.2, -0.1, 0, .)
+# cols <- get_color(rcolors$amwg256, nbrk)
+cols <- get_color2(rcolors$amwg256, brks)$cols
+
+pdat2 <- mutate(pdat,
+  slp_lev = cut(slope * 10, brks),
+  slp_shape = cut(abs(slope * 10), c(-Inf, 0.1, 0.2, 0.5, Inf))
+)
+pdat_final = filter_homo(pdat2)
+fontsize = 14
+p1 <- plot_trend_tair(pdat_final[varname == "Tair_max"], fontsize = fontsize)
+p2 <- plot_trend_tair(pdat_final[varname == "Tair_avg"], fontsize = fontsize)
+# p_tair <- patchwork::wrap_plots(p1, p2, ncol = 1)
+# write_fig(p_tair, "d:/trend_Tair.pdf", 11, 6)
+
+th = theme(strip.text.x.top = element_blank())
+## 相对湿度
+brks <- {c(0.05, 0.1, 0.2, Inf)*5} %>% c(-rev(.), 0,  .)
+cols <- get_color2(rcolors$amwg256, brks)$cols
+
+pdat2 <- pdat[varname == "RH_avg", ] %>% 
+  mutate(
+    slp_lev = cut(slope * 10, brks),
+    slp_shape = cut(abs(slope * 10), c(-Inf, 0.1, 0.2, 0.5, Inf)) )
+
+pdat_final <- filter_homo(pdat2)
+# 1290个站点发生过调整
+p_rh = plot_trend_tair(pdat_final, lgd_title = lab_trend_RH, fontsize = fontsize, theme = NULL)
+
+p <- patchwork::wrap_plots(p1, p2, p_rh, ncol = 1)
+# geom_signPoint(aes(mask = pvalue <= 0.05), shape = 4)
+write_fig(p, "d:/trend_RH_2022.pdf", 12, 9)
+```
+
+## 
+
+```{r}
+p = ggplot(pdat_final[type_homo == "Raw"], aes(lon, lat)) + 
+  geom_point() + 
+  layer_PosNeg_sign(aes(z = slope, mask = pvalue <= 0.05), 
+    hjust = 0, vjust = 1,
+    x = 0.4, y = 0.9, height.factor = 2)
+write_fig(p, 'Rplot.pdf', 10, 5)
+```
+
+
+
+## 检查错误
+```{r}
+# 321个显著的站点，下降的趋势是虚假的
+sites_sign = pdat_final[type_homo == "Homogenized - Raw" & pvalue <= 0.05, site]
+dat[site %in% sites_sign & (sign(Raw) * sign(Homogenized) < 0), ]
+```
+
+
+```{r}
+data_year = foreach(f = fs, i = icount()) %do% {
+  load(f)
+  lst_year$RH_avg
+  # df = cal_trend(lst_year, year_max = 2022)
+  # df
+} %>% melt_list("type_homo")
+```
+
+```{r}
+names_ex = c("河曲", "瓜州", "通道")
+sites_ex = st_met2481[match(names_ex, name), site]
+info = data.table(site = sites_ex, name = names_ex)
+
+d = data_year[site %in% sites_ex] %>% merge(info) %>% 
+  mutate(name = factor(name, names_ex), 
+    type_homo = factor(type_homo, lev_homo %>% rev()))
+
+ggplot(d, aes(year, value, color = type_homo)) + 
+  geom_line(aes(linetype = type_homo)) + 
+  stat_reg(height.factor = 1.4, digits = 3) + 
+  facet_wrap(~name, ncol = 1, scales = "free_y") + 
+  theme_bw() + 
+  theme(
+    panel.grid.major = element_line(linewidth = 0.2, linetype = 2),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(family = "rTimes", size = 12, face = "bold"), 
+    legend.margin = margin(t = 2, b = -10), 
+    legend.position = "top") + 
+  scale_linetype_manual(values = c(3, 1)) + 
+  scale_color_manual(values = c("black", "red") %>% rev()) + 
+  labs(x = NULL, y = "RH (%)", color = NULL, linetype = NULL) -> p
+write_fig(p, 'Figure1_homogenization_Illustration.pdf', 5, 7)
+```

@@ -51,7 +51,6 @@ if (0) {
 ```{r}
 # InitCluster(14, kill = FALSE)
 # 337 unchanged: lon^2 + lat^2
-
 # process(df, varname = "Tavg", overwrite = FALSE)
 ## In the second time, input data will be cached, df can be NULL
 process(df = NULL, varname = "Tavg", overwrite = FALSE)
