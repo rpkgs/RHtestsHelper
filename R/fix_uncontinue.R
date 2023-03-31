@@ -13,7 +13,6 @@ fix_uncontinue <- function(df, complete_year = TRUE) {
     # ddply(df, .(site), fix_uncontinue_site, .progress = "text")
 }
 
-
 fix_uncontinue_site <- function(d, ..., complete_year = TRUE) {
   n <- nrow(d)
   # if (n <= 365*4) return(NULL)
@@ -30,7 +29,6 @@ fix_uncontinue_site <- function(d, ..., complete_year = TRUE) {
     }
   }
   # print2(date_begin, date_end)
-  # browser()
   temp <- data.table(date = seq.Date(date_begin, date_end, by = "day"))
   merge(d, temp, c("date"), all.y = TRUE) #%>% select(-site)
 }

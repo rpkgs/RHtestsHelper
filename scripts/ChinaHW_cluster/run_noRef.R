@@ -14,10 +14,10 @@ df = import_fst(f_input)
 sites <- df[, .N, .(site)]$site
 
 InitCluster(10)
-varnames = c("Tair_max", "Tair_avg", "RH_avg")
+varnames = c("RH_avg", "Tair_max", "Tair_avg")
 
 varname <- "Tair_max"
-version <- "v20230327"
+version <- "v20230331"
 
 # sites_bad <- c(50548, 54416, 54916, 58942, 59265) %>% as.character()
 run_noRef <- function(varname) {
@@ -33,17 +33,16 @@ run_noRef <- function(varname) {
   } else {
     res2 = readRDS(f_month)
   }
-  
-  # merge yearly and monthly TP
-  info <- TP_mergeYM_sites(res2)
-  info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
-  sites_adj = info2[, .N, .(site)][, site]
+  # # merge yearly and monthly TP
+  # info <- TP_mergeYM_sites(res2)
+  # info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
+  # sites_adj = info2[, .N, .(site)][, site]
 
-  # res_adj = res2[sites_adj]
-  ## 这一步可能做的不够好
-  lst_TP <- split(info2, info2$site)
-  out <- homogenize_daily(df, lst_TP, varname, .parallel = TRUE)
-  saveRDS(out, f_day)
+  # # res_adj = res2[sites_adj]
+  # ## 这一步可能做的不够好
+  # lst_TP <- split(info2, info2$site)
+  # out <- homogenize_daily(df, lst_TP, varname, .parallel = TRUE)
+  # saveRDS(out, f_day)
 }
 
 # update_noRef_daily <- function() {

@@ -6,7 +6,7 @@
 #' @param mat_month The monthly input data matrix, with the dimension of `[ntime, nsite]`
 #' 
 #' @export
-st_refer <- function(st, mat_month, .parallel=FALSE, nsite = NULL) {
+st_refer <- function(st, mat_month, .parallel=FALSE, nsite = NULL, ..., sites_bad = NULL) {
   if (!isTRUE(all.equal(st$site %>% as.character(), colnames(mat_month)))) {
     stop("check site names order first!")
   }
@@ -24,6 +24,7 @@ st_refer <- function(st, mat_month, .parallel=FALSE, nsite = NULL) {
   foreach(i = inds, icount(nsite)) %dof% {  
   # for (i in seq_along(sites)) {
     runningId(i, 100)
+
     disti <- dist[, i]
     ind_near <- which(disti <= 350) %>% setdiff(i) # in the circle buffer of 350km
     alt_t <- st[i, alt]
@@ -35,11 +36,16 @@ st_refer <- function(st, mat_month, .parallel=FALSE, nsite = NULL) {
     st_ref$dist_ref <- disti[ind_near]
     st_ref <- st_ref[abs(alt - alt_t) <= alt_diffMax]
 
+    ## 计算重叠的时段
     period_x <- st[i, c(date_begin, date_end)]
     # y = st_ref[, .(date_begin, date_end)]
     st_ref$perc_cov <- period_coverage(period_x, st_ref[, .(date_begin, date_end)])
     st_ref$perc_cov_period <- period_coverage(period_x, st_ref[, .(period_date_begin, period_date_end)])
-    # st_ref = st_ref[!(site %in% sites_bad), ]
+
+    ## 去除存在突变的站点
+    if (is.null(sites_bad)) {
+      st_ref = st_ref[!(site %in% sites_bad), ]
+    }
 
     ## 计算一阶导的相关系数
     ind_near2 <- match(st_ref$site, sites) %>% c(i, .)
@@ -51,7 +57,6 @@ st_refer <- function(st, mat_month, .parallel=FALSE, nsite = NULL) {
       st_ref$cor <- cor(data1, use = "pairwise.complete.obs")[1, -1]
     }
     st_ref
-    # st_refs[[i]] <- st_ref
   }
 }
 
@@ -83,6 +88,8 @@ st_refer_opt <- function(st_refs, sites_worst) {
       x
     }
   })
+
+  # 这里也存在一些bug
   out <- map(st_refs2, function(x) {
     if (is.null(x)) {
       NULL

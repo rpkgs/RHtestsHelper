@@ -21,9 +21,67 @@ f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
 ```
 
 ```{r}
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
+df <- import_fst(f_input)
+df_year_org <- df[, .(site, date, value = RH_avg)] %>% dt_day2year()
+
+varname = "RH_avg"
 f_noref = "Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_noRef_daily.RDS"
 f_ref = "Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_withRef_daily.RDS"
 
 l_noref = readRDS(f_noref)
 l_ref = readRDS(f_ref)
 ```
+
+```{r}
+l_Ref_day = l_ref
+l_noRef_day = l_noref
+```
+
+```{r}
+
+
+info = df_final[, .N, .(site, type_homo)][, .(site, type_homo)]
+
+## 再给他添加上其他附属信息
+system.time(df_year <- dt_day2year(df_final))
+df_year %<>% merge(info, .)
+# df_final
+```
+
+```{r}
+dat = list(Homo = df_year, 
+  Original = merge(info, df_year_org)) %>% 
+  melt_list("type_source")
+
+# d_year = df_year[, .(value = mean(value)), .(year)]
+# p = ggplot(d_year, aes(year, value)) + 
+#   geom_line()
+# write_fig(p, 'Rplot.pdf', 10, 5)
+```
+
+```{r}
+d_year = dat[, .(value = mean(value)), .(year, type_homo, type_source)]
+
+fun <- function() {
+  list(
+    labs(color = NULL),
+    theme(
+      legend.margin = margin(t = 0, b = -8),
+      legend.position = "top")
+  )
+}
+## 有参考考的情况，订正可能处理的不对
+
+# 不考虑参考站的能够矫正回来
+p = ggplot(d_year, aes(year, value, color = type_source)) + 
+  geom_line() + 
+  facet_wrap(~type_homo, scales = "free", nrow = 2) + 
+  fun()
+
+write_fig(p, 'Rplot_3.pdf', 10, 5)
+```
+
+<!-- 1 Original   1016
+2 NoRef       244
+3 Ref        1214 -->

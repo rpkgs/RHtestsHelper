@@ -75,3 +75,31 @@ rename_vars <- function(d, new, old) {
   colnames(d)[pos$I_y] = new[pos$I_x]
   d
 }
+
+#' dt_day2year
+#' @param dat A data.table, at least with the columns of `c("site", "date", "value")`
+#' @export 
+dt_day2year <- function(dat, 
+  nmiss_day_per_mon = 3, nmiss_MonPerYear = 0, nmin_year = 55, ...) 
+{
+  # dat %<>% fix_uncontinue()
+  dat_mon <- dat[, .(
+    value = mean(value, na.rm = TRUE),
+    # nmiss =  days_in_month(date[1]) - sum(!is.na(value))
+    n_valid = sum(!is.na(value)) 
+    # nmiss = sum(is.na(value))
+  ), .(site, date = date_ym(date))]
+  dat_mon %<>% mutate(n_miss = days_in_month(date) - n_valid)
+  
+  dat_year <- dat_mon[n_miss <= nmiss_day_per_mon, .(
+    value = mean(value, na.rm = TRUE),
+    n_miss = 12 - .N
+  ), .(site, year(date))]
+  
+  ans <- dat_year[n_miss <= nmiss_MonPerYear, .(site, year, value)] # %>% set_names(c("site", "date", varname))
+  # 去除数据长度过短的站点
+  # 最长的数据有62年，
+  info <- ans[, .N, site]
+  # info[N >= 55, ] # 至少有55年的数据
+  merge(ans, info[N >= nmin_year, .(site)]) # yeraly data
+}

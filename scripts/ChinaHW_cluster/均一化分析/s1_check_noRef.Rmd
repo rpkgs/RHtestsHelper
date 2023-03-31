@@ -1,0 +1,83 @@
+```{r}
+# source("scripts/ChinaHW_cluster/main.R")
+library(data.table)
+library(tidyfst)
+library(Ipaper)
+library(purrr)
+library(rtrend)
+library(gg.layers)
+library(tidymet)
+library(sf)
+library(ggplot2)
+library(gg.layers)
+library(rcolors)
+library(patchwork)
+
+source("scripts/ChinaHW_cluster/main_vis.R", encoding = "UTF-8")
+source('scripts/ChinaHW_cluster/均一化分析/main_trend.R')
+
+f_org <- "OUTPUT/ChinaHI/Trend/trend_original.rda"
+f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
+```
+
+```{r}
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
+df <- import_fst(f_input)
+df_year_org <- df[, .(site, date, value = RH_avg)] %>% dt_day2year()
+
+varname = "RH_avg"
+f_noref = "Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_noRef_daily.RDS"
+f_ref = "Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_withRef_daily.RDS"
+f_noRef_mon = "Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_noRef_monthly.RDS"
+
+l_noref_mon = readRDS(f_noRef_mon)
+l_noref_day = readRDS(f_noref)
+l_ref_day = readRDS(f_ref)
+# 换个名字
+```
+
+```{r}
+# `898`个站点 --> 余`793`站点
+# df_noref <- getData_day(l_noref_day)
+df_year_noref = dt_day2year(df_noref)
+info_noref = df_year_noref[, .N, site]
+
+dat = list(Raw = df_year_org %>% merge(info_noref[, .(site)]), 
+  NoRef = df_year_noref) %>% 
+  melt_list("type_homo")
+
+dat_year = dat[, .(value = mean(value)), .(type_homo, year)]
+# df_year_noref[, .N, site]
+```
+
+```{r}
+# 如果是这样的话，很多站点能够矫正过来
+p = ggplot(dat_year, aes(year, value, color = type_homo)) + 
+  geom_line()
+write_fig(p, 'd:/Rplot.pdf', 10, 5)
+```
+
+## 分析突变的年份
+
+```{r}
+info <- TP_mergeYM_sites(l_noref_mon)
+info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
+sites_adj = info2[, .N, .(site)][, site]
+```
+
+```{r}
+info2[, year(date)] %>% hist()
+```
+
+```{r}
+pdat = info2[, .(year = year(date)), site]
+
+brks = seq(1970, 2022, 1)
+p = ggplot(pdat, aes(x = year)) + 
+  geom_histogram(breaks = brks) + # (x1, x2]
+  stat_bin(geom = "text", 
+    breaks = brks, 
+    vjust = -0.2, 
+    aes(y = after_stat(count), label = after_stat(count))) 
+write_fig(p, 'd:/Rplot.pdf', 10, 5)
+```

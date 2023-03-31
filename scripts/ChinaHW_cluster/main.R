@@ -56,9 +56,7 @@ main_RHtests_met2481 <- function(
   f_noRef_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.RDS")
   f_Ref_day   <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_withRef_daily.RDS")
   f_final     <- glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_RHtests_{version}_{varname}.csv")
-  # fs = c(f_Ref, f_noRef_mon, f_noRef, f_withRef, f_final)
-  # file.exists(fs)
-
+  
   if (!file.exists(f_noRef_mon)) {
     # sink("log.txt")
     res <- homogenize_monthly(df, st_moveInfo, sites, varname, .parallel = TRUE)
@@ -68,6 +66,7 @@ main_RHtests_met2481 <- function(
   } else {
     res_noRefMon <- readRDS(f_noRef_mon)
   }
+
   # 获取需要调整的站点
   ok("Merging TPs of yearly and monthly input ...")
   info <- TP_mergeYM_sites(res_noRefMon)
@@ -129,63 +128,60 @@ main_RHtests_met2481 <- function(
   }
 
   ## 3. 数据清洗
-  ### 3.1. with refer, 含有TP的部分
-  TPs <- map(res_ref, ~ .$day$TP)
-  inds_fixed <- which.notnull(TPs)
-
-  # > TPs 不为空的站点，采用`homogenize.wRef`修正；其余的采用no-ref进行修正
-  d_ref <- map(res_ref[inds_fixed], ~ .$day$data[, .(date, QM_adjusted)]) %>%
-    melt_list("site") %>% 
-    rename({{varname}} := QM_adjusted)
-
-  ### 3.2. without refer, 含有TP的部分
-  res_noRef = readRDS(f_noRef_day)
-
-  d_noref <- res_noRef[sites_miss] %>%
-    map(~ .$data[, .(date, QM_adjusted)]) %>%
-    rm_empty() %>%
-    melt_list("site") %>% 
-    rename({{ varname }} := QM_adjusted)
-
-  df_fixed <- rbind(d_ref, d_noref) %>% set_colnames(c("site", "date", varname))
-  # 需要区分这三者的差别
-
-  ## merge the unfixed and fixed
-  sites_fixed <- df_fixed$site %>% unique()
-
-  df_org = df[!(site %in% sites_fixed), ] %>% select(all_of(c("site", "date", varname)))
-
-  df_final <- rbind(df_fixed, df_org)
-
+  df_final = merge_refer(df, f_Ref_day, f_noRef_day, varname)
   fwrite(df_final, f_final)
-  df_final
 }
 
 
-merge_Ref <- function(df, f_Ref_day, f_noRef_day) {
-  sites = df$site %>% unique()
-  
+merge_refer <- function(df, l_Ref_day, l_noRef_day, varname = "RH_avg") {
+  if (is.character(l_Ref_day)) l_Ref_day %<>% readRDS()
+  if (is.character(l_noRef_day)) l_noRef_day %<>% readRDS()
+
+  sites = df$site %>% unique_sort()  
   ### 3.1. with refer, 含有TP的部分
-  res_ref <- readRDS(f_Ref_day)
-  TPs <- map(res_ref, ~ .$day$TP)
+  # res_ref <- readRDS(f_Ref_day)
+  TPs <- map(l_Ref_day, ~ .$day$TP)
   inds_fixed <- which.notnull(TPs)
+
   # > TPs 不为空的站点，采用`homogenize.wRef`修正；其余的采用no-ref进行修正
-  d_ref <- map(res_ref[inds_fixed], ~ .$day$data[, .(date, QM_adjusted)]) %>%
+  d_ref <- map(l_Ref_day[inds_fixed], ~ .$day$data[, .(date, QM_adjusted)]) %>%
     melt_list("site") %>%
     rename({{ varname }} := QM_adjusted)
 
+  sites_ref = as.integer(names(l_Ref_day))
+  sites_ref_yes = d_ref$site %>% unique_sort() # with TP
+  sites_miss = setdiff(sites, sites_ref) # %>%
+
   ### 3.2. without refer, 含有TP的部分
-  res_noRef = readRDS(f_noRef_day)
-  d_noref <- res_noRef[sites_miss] %>%
+  d_noref <- l_noRef_day[as.character(sites_miss)] %>%
     map(~ .$data[, .(date, QM_adjusted)]) %>%
     rm_empty() %>%
     melt_list("site") %>%
     rename({{ varname }} := QM_adjusted)
-  
+  sites_noref_yes = d_noref$site %>% unique_sort() # with TP
+
+  sites_org <- setdiff(sites, c(sites_ref_yes, sites_noref_yes)) %>% as.character()
+
+  linfo_site = list(Ref = sites_ref_yes, NoRef = sites_noref_yes, Original = sites_org) %>%
+    map(as.integer) # %>% str()
+  # str(linfo_site)
+
   ## merge the unfixed and fixed
-  sites_fixed <- df_fixed$site %>% unique()
-  df_org = df[!(site %in% sites_fixed), ] %>% select(all_of(c("site", "date", varname)))
-  # df_final <- rbind(df_fixed, df_org)
-  df_final = list("Original" = df_org, NoRef = d_noref, Ref = d_ref) %>% melt_list("type_homo")
-  df_final
+  df_org = df[site %in% as.integer(sites_org), ] %>%
+    select(all_of(c("site", "date", varname)))
+
+  df_final = list("Original" = df_org, NoRef = d_noref, Ref = d_ref) %>%
+    melt_list("type_homo") %>%
+    rename_vars("value", varname)
+}
+
+#' @examples
+#' getData_day(l)
+#' getData_day()
+getData_day <- function(l) {
+  l %>%
+    map(~ .$data[, .(date, value = QM_adjusted)]) %>%
+    rm_empty() %>% 
+    melt_list("site") #%>%
+    # rename({{ varname }} := QM_adjusted)
 }

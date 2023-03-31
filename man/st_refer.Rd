@@ -5,7 +5,7 @@
 \alias{st_refer_opt}
 \title{get the potential reference sites}
 \usage{
-st_refer(st, mat_month, .parallel = FALSE, nsite = NULL)
+st_refer(st, mat_month, .parallel = FALSE, nsite = NULL, ..., sites_bad = NULL)
 
 st_refer_opt(st_refs, sites_worst)
 }
