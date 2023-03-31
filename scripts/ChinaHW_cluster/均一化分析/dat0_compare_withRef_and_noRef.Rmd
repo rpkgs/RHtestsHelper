@@ -1,0 +1,29 @@
+```{r}
+# source("scripts/ChinaHW_cluster/main.R")
+library(data.table)
+library(tidyfst)
+library(Ipaper)
+library(purrr)
+library(rtrend)
+library(gg.layers)
+library(tidymet)
+library(sf)
+library(ggplot2)
+library(gg.layers)
+library(rcolors)
+library(patchwork)
+
+source("scripts/ChinaHW_cluster/main_vis.R", encoding = "UTF-8")
+source('scripts/ChinaHW_cluster/均一化分析/main_trend.R')
+
+f_org <- "OUTPUT/ChinaHI/Trend/trend_original.rda"
+f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
+```
+
+```{r}
+f_noref = "Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_noRef_daily.RDS"
+f_ref = "Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_withRef_daily.RDS"
+
+l_noref = readRDS(f_noref)
+l_ref = readRDS(f_ref)
+```

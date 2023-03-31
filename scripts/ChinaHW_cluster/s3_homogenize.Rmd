@@ -4,7 +4,7 @@ library(lubridate)
 library(RHtests)
 library(tidymet)
 library(tidyfst)
-# library(latticeGrob)
+
 devtools::load_all()
 devtools::load_all("../RHtests.R")
 ```
@@ -25,8 +25,7 @@ varnames = c("Tair_max", "Tair_avg", "RH_avg")
 varname <- "Tair_max"
 version <- "v20230228"
 
-sites_bad <- c(50548, 54416, 54916, 58942, 59265) %>% as.character()
-
+# sites_bad <- c(50548, 54416, 54916, 58942, 59265) %>% as.character()
 run_noRef <- function(varname) {
   f_month <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.RDS")
   f_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.RDS")
@@ -67,13 +66,56 @@ foreach(varname = varnames, i = icount()) %do% {
   # out <- homogenize_daily(df, lst_TP, varname, nsite = 10)
 # })
 varname = "RH_avg"
-sitename = 50247 #"sites[50247]
+sitename = sites_ex[1]
+# sitename = 50247 #"sites[50247]
 l = get_Input(df, sitename, varname)
 
 prefix <- "./OUTPUT/example01"
-r_month <- RHtests_process(l$month, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
-r_year <- RHtests_process(l$year, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
+# r_month <- RHtests_process(l$month, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
+# r_year <- RHtests_process(l$year, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
+
+st_moveInfo[site == sitename]
+info = TP_mergeYM(list(month = r_month, year = r_year))
+# info <- TP_mergeYM_sites(res2)
+info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
+info2
+# sites_adj <- info2[, .N, .(site)][, site]
 
 plot_output(r_month$data, "month.pdf", show=TRUE)
 plot_output(r_year$data, "year.pdf", show = TRUE)
+```
+
+```{r}
+## 进一查找参考站的情况
+# 加载参考站数据
+load("Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_st_refer.rda")
+```
+
+```{r}
+site_target = sitename
+site_refer = d_refs[target == sitename, site]
+
+d_target = df[site == site_target, .(date, value = RH_avg)]
+d_refer = df[site == site_refer, .(date, value = RH_avg)]
+
+d <- merge(d_target, d_refer %>% set_names(c("date", "ref")), all.x = TRUE)
+metadata <- get_metadata(d, site_target)
+r <- homogenize.wRef(d, metadata)
+
+plot_output(r$year$data, "year_withRef.pdf", show = TRUE)
+```
+
+### 输入数据
+```{r}
+l = RHtests_input(d) %>% map(data.table)
+d2 = l$year %>% mutate(diff = value - ref)
+p1 <- ggplot(d2, aes(year)) + 
+  geom_line(aes(y = value), color = "black") +
+  geom_line(aes(y = ref), color = "red")
+  # geom_line(aes(y = value), color = "black") +
+p2 = ggplot(d2, aes(year)) + 
+  geom_line(aes(y = diff), color = "black")
+
+p = p1 / p2
+write_fig(p, 'd:/Rplot.pdf', 10, 6)
 ```

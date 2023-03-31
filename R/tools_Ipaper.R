@@ -68,3 +68,10 @@ convert_day2mon <- function(
   mat_month[mat_month_miss > max.nmiss] <- NA_real_
   mat_month
 }
+
+#' @export
+rename_vars <- function(d, new, old) {
+  pos = match2(old, colnames(d))
+  colnames(d)[pos$I_y] = new[pos$I_x]
+  d
+}

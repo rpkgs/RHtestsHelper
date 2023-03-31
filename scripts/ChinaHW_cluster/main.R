@@ -73,37 +73,36 @@ main_RHtests_met2481 <- function(
   info <- TP_mergeYM_sites(res_noRefMon)
   info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
   sites_adj = info2[, .N, .(site)][, site]
-  browser()
 
-  ### withRef
-  ### 2.1. 挑选参考站
-  if (!file.exists(f_stRef)) {
-    mat_mon = convert_day2mon(df, varname)
-
-    if (!isTRUE(all.equal(colnames(mat_mon), as.character(st$site)))) {
-      stop("check site names order first!")
-    }
-
-    ok("Finding Reference sites ...")
-    st_refs <- st_refer(st, mat_mon, nsite = NULL, .parallel = TRUE)
-    st_refs_opt <- st_refer_opt(st_refs, sites_adj)
-    d_refs <- melt_list(st_refs_opt, "target")
-
-    # 这里可能写出了
-    sites_miss <- setdiff(sites, d_refs$target) %>% as.character()
-    # length(sites_miss)
-    save(st_refs, st_refs_opt, d_refs, sites_miss, file = f_stRef)  
-  } else {
-    load(f_stRef)
-  }
-
-  ### 2.2. 带有参考站的（withRef）均一化检测
+  ## 2. 带有参考站的（withRef）均一化检测
   # ? 如果WithRef未检测到TP，withRef是否有可能检测到？
   if (!file.exists(f_Ref_day)) {
+    ### 2.1. 挑选参考站
+    if (!file.exists(f_stRef)) {
+      mat_mon = convert_day2mon(df, varname)
+
+      if (!isTRUE(all.equal(colnames(mat_mon), as.character(st$site)))) {
+        stop("check site names order first!")
+      }
+
+      ok("Finding Reference sites ...")
+      st_refs <- st_refer(st, mat_mon, nsite = NULL, .parallel = TRUE)
+      st_refs_opt <- st_refer_opt(st_refs, sites_adj)
+      d_refs <- melt_list(st_refs_opt, "target")
+
+      # 这里可能写出了
+      sites_miss <- setdiff(sites, d_refs$target) %>% as.character()
+      # length(sites_miss)
+      save(st_refs, st_refs_opt, d_refs, sites_miss, file = f_stRef)
+    } else {
+      load(f_stRef)
+    }
+
     inds <- d_refs$target %>% set_names(seq_along(.), .)
     m <- nrow(d_refs)
     ok("Homogenization withRef ...")
 
+    ### 2.2. 带有参考站的（withRef）均一化检测
     res_ref <- foreach(i = inds, icount()) %dopar% {
       runningId(i)
       # if (i == 2) break()
@@ -136,7 +135,8 @@ main_RHtests_met2481 <- function(
 
   # > TPs 不为空的站点，采用`homogenize.wRef`修正；其余的采用no-ref进行修正
   d_ref <- map(res_ref[inds_fixed], ~ .$day$data[, .(date, QM_adjusted)]) %>%
-    melt_list("site")
+    melt_list("site") %>% 
+    rename({{varname}} := QM_adjusted)
 
   ### 3.2. without refer, 含有TP的部分
   res_noRef = readRDS(f_noRef_day)
@@ -144,9 +144,11 @@ main_RHtests_met2481 <- function(
   d_noref <- res_noRef[sites_miss] %>%
     map(~ .$data[, .(date, QM_adjusted)]) %>%
     rm_empty() %>%
-    melt_list("site")
+    melt_list("site") %>% 
+    rename({{ varname }} := QM_adjusted)
 
   df_fixed <- rbind(d_ref, d_noref) %>% set_colnames(c("site", "date", varname))
+  # 需要区分这三者的差别
 
   ## merge the unfixed and fixed
   sites_fixed <- df_fixed$site %>% unique()
@@ -156,5 +158,34 @@ main_RHtests_met2481 <- function(
   df_final <- rbind(df_fixed, df_org)
 
   fwrite(df_final, f_final)
+  df_final
+}
+
+
+merge_Ref <- function(df, f_Ref_day, f_noRef_day) {
+  sites = df$site %>% unique()
+  
+  ### 3.1. with refer, 含有TP的部分
+  res_ref <- readRDS(f_Ref_day)
+  TPs <- map(res_ref, ~ .$day$TP)
+  inds_fixed <- which.notnull(TPs)
+  # > TPs 不为空的站点，采用`homogenize.wRef`修正；其余的采用no-ref进行修正
+  d_ref <- map(res_ref[inds_fixed], ~ .$day$data[, .(date, QM_adjusted)]) %>%
+    melt_list("site") %>%
+    rename({{ varname }} := QM_adjusted)
+
+  ### 3.2. without refer, 含有TP的部分
+  res_noRef = readRDS(f_noRef_day)
+  d_noref <- res_noRef[sites_miss] %>%
+    map(~ .$data[, .(date, QM_adjusted)]) %>%
+    rm_empty() %>%
+    melt_list("site") %>%
+    rename({{ varname }} := QM_adjusted)
+  
+  ## merge the unfixed and fixed
+  sites_fixed <- df_fixed$site %>% unique()
+  df_org = df[!(site %in% sites_fixed), ] %>% select(all_of(c("site", "date", varname)))
+  # df_final <- rbind(df_fixed, df_org)
+  df_final = list("Original" = df_org, NoRef = d_noref, Ref = d_ref) %>% melt_list("type_homo")
   df_final
 }
