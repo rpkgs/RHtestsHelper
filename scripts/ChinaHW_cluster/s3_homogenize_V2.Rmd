@@ -17,15 +17,33 @@ df = import_fst(f_input)
 sites <- df[, .N, .(site)]$site
 ```
 
+```{r}
+# devtools::load_all("../RHtests.R")
+
+varnames <- c("Tair_max", "Tair_avg", "RH_avg")
+varname <- "RH_avg"
+version <- "v20230331"
+
+# profvis::profvis({
+# proffer::pprof({
+  res <- homogenize_monthly(df, st_moveInfo, sites[1:10], varname, .parallel = FALSE)
+# })
+
+str(res, 2)
+```
+
+合并TP
+```{r}
+TP_mergeYM_sites(res)
+```
+
 ## original
 ```{r}
 # InitCluster(10)
 varnames = c("Tair_max", "Tair_avg", "RH_avg")
-
 varname <- "Tair_max"
-version <- "v20230228"
-
-sites_bad <- c(50548, 54416, 54916, 58942, 59265) %>% as.character()
+version <- "v20230331"
+# sites_bad <- c(50548, 54416, 54916, 58942, 59265) %>% as.character()
 
 run_noRef <- function(varname) {
   f_month <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.RDS")
@@ -33,20 +51,19 @@ run_noRef <- function(varname) {
 
   if (!file.exists(f_month)) {
     # sink("log.txt")
-    res <- homogenize_monthly(df, st_moveInfo, sites, varname, .parallel = TRUE)
-    res2 <- RHtests_rm_empty(res)
-    saveRDS(res2, f_month)
+    lst_mon <- homogenize_monthly(df, st_moveInfo, sites, varname, .parallel = TRUE)
+    saveRDS(lst_mon, f_month)
     # sink(NULL)
   } else {
-    res2 = readRDS(f_month)
+    lst_mon = readRDS(f_month)
   }
-
-  # merge yearly and monthly TP
-  info <- TP_mergeYM_sites(res2)
+  # # merge yearly and monthly TP
+  lst_mon2 <- RHtests_rm_empty(lst_mon)
+  info <- TP_mergeYM_sites(lst_mon2)
   info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
   sites_adj = info2[, .N, .(site)][, site]
 
-  # res_adj = res2[sites_adj]
+  # res_adj = lst_mon2[sites_adj]
   lst_TP <- split(info2, info2$site)
   out <- homogenize_daily(df, lst_TP, varname, .parallel = TRUE)
   saveRDS(out, f_day)
@@ -56,11 +73,6 @@ foreach(varname = varnames, i = icount()) %do% {
   run_noRef(varname)
 }
 ```
-
-```{r}
-# 只更新部分站点
-```
-
 
 ## DEBUG
 

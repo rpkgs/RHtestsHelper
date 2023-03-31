@@ -38,7 +38,11 @@ l_ref_day = readRDS(f_ref)
 
 ```{r}
 # `898`个站点 --> 余`793`站点
-# df_noref <- getData_day(l_noref_day)
+df_noref <- getHomoData(l_noref_day)
+info_noref = df_noref[, .N, site]
+info_noref[site %in% sites[1:10], ]
+
+
 df_year_noref = dt_day2year(df_noref)
 info_noref = df_year_noref[, .N, site]
 

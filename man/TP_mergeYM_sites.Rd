@@ -5,16 +5,15 @@
 \alias{TP_mergeYM_sites}
 \title{TP_mergeYM_sites}
 \usage{
-TP_mergeYM(x)
+TP_mergeYM(l)
 
 TP_mergeYM_sites(res2)
 }
 \arguments{
-\item{x}{Object returned by \code{\link[=homogenize.wRef]{homogenize.wRef()}}, a list with the elements of
+\item{l}{Object returned by \code{\link[=homogenize.wRef]{homogenize.wRef()}}, a list with the elements of
 \itemize{
 \item year
 \item month
-\item day
 }}
 
 \item{res2}{object returned by \code{\link[=RHtests]{RHtests()}}}

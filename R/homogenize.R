@@ -1,5 +1,3 @@
-
-
 #' RHtests_main
 #' 
 #' @param df A data.frame with the columns at least of `site`, 'date', 'varname'
@@ -19,6 +17,7 @@ homogenize_monthly <- function(df, st_moveInfo, sites, varname, ..., .parallel =
       l = get_Input(df, sitename, varname)
       
       prefix <- "./OUTPUT/example01"
+      
       r_month <- RHtests_process(l$month, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
       r_year <- RHtests_process(l$year, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
       # TP <- r_month$TP
@@ -61,11 +60,4 @@ homogenize_daily <- function(df, lst_TP, varname = "Tavg", ...,
     })
   }
   res_daily
-}
-
-RHtests_rm_empty <- function(res) {
-  I_left1 <- map(res, "year") %>% which.notnull()
-  I_left2 <- map(res, "month") %>% which.notnull()
-  I_left <- intersect(I_left1, I_left2) # %>% sort()
-  res[I_left]
 }

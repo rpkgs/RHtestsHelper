@@ -174,14 +174,3 @@ merge_refer <- function(df, l_Ref_day, l_noRef_day, varname = "RH_avg") {
     melt_list("type_homo") %>%
     rename_vars("value", varname)
 }
-
-#' @examples
-#' getData_day(l)
-#' getData_day()
-getData_day <- function(l) {
-  l %>%
-    map(~ .$data[, .(date, value = QM_adjusted)]) %>%
-    rm_empty() %>% 
-    melt_list("site") #%>%
-    # rename({{ varname }} := QM_adjusted)
-}

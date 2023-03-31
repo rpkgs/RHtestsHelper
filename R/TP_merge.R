@@ -12,60 +12,73 @@ TP_merge <- function(res) {
   lst_TP
 }
 
-#' merge monthly and yearly TPs and mask bads out
-#'
-#' @param d A data.frame returned by [TP_mergeYM_sites()]
-#' @param nyear the monthly TP will be filter out, if the distance to the
-#' nearest yearly TP is longer than `nyear`.
-#'
-#' @export
-TP_high_conf <- function(d, nyear = 1) {
-  if (is.null(d) || nrow(d) == 0) return(NULL)
-  d[abs(year(date) - year(date_year)) <= nyear, ][Idc != "No  ", ]
+# > 合并年和月的TPs
+## 首先保存，具有元数据支持的TP
+diffday <- function(x, y, ..., unit = "days") {
+  difftime(x, y, units = "days") %>% as.integer()
 }
 
-
-
-#' @param x Object returned by [homogenize.wRef()], a list with the elements of
+#' @param l Object returned by [homogenize.wRef()], a list with the elements of
 #' - year
 #' - month
-#' - day
 #' @rdname TP_mergeYM_sites
-TP_mergeYM <- function(x) {
-  TP_year <- x$year$TP
-  TP_month <- x$month$TP
-  if (is.null(TP_year) || is.null(TP_month)) return(NULL)
+TP_mergeYM <- function(l) {
+  TP_year <- l$year$TP
+  TP_mon <- l$month$TP
+  if (is.null(TP_year) || is.null(TP_mon)) return(NULL)
 
-  foreach(j = 1:nrow(TP_month)) %do% {
-    date <- TP_month$date[j]
-    diff_year <- difftime(date, TP_year$date, units = "days") %>% as.numeric()
-    I_year <- which.min(abs(diff_year))
+  # 年和月匹配的部分
+  TP_matched = matchedTP_in_year(TP_mon, TP_year)
 
-    # diff_meta <- difftime(date, meta$date, units = "days") %>% as.numeric()
-    # I_meta <- which.min(abs(diff_meta))
-    # c("kind", "Idc", "date", "Ic", "Nseg", "stepsize", "probL", "probU", "plev", "date_meta", "diff")
-    cbind(TP_month[j, ],
-      date_year = TP_year$date[I_year], day_year = diff_year[I_year]
-      # date_meta2 = meta$date[I_meta], day2_meta = diff_meta[I_meta]
-    ) %>%
-      reorder_name(c(
-        "kind", "Idc", "Ic", "date", "date_meta", "date_year",
-        "day2_meta", "day2_year"))
-  } %>% do.call(rbind, .)
+  ## 落选的部分，可能会有可取的部分
+  # inds = match(unique(TP_matched$date_year), TP_year$date)
+  # if (length(inds) < nrow(TP_year)) {
+  #   # 挑选最近的month
+  #   # TP_year2 = TP_year[-inds, ]
+  #   # TP2 = matchedTP_in_mon(TP_year2, TP_mon)
+  #   # TP_matched %<>% rbind(TP2)
+  # }
+  TP_matched
 }
 
+matchedTP_in_year <- function(TP_mon, TP_year) {
+  foreach(j = 1:nrow(TP_mon), .combine = rbind.data.frame) %do% {
+    d_mon = TP_mon[j, ]
+    diffday_ym <- diffday(d_mon$date, TP_year$date)
+    I0 <- which.min(abs(diffday_ym))
+
+    d_mon %>%
+      rename(date_mon = date) %>%
+      mutate(date_year = TP_year$date[I0], .after = date_mon) %>%
+      mutate(diffday_ym = diffday_ym[I0])
+  }
+}
+
+matchedTP_in_mon <- function(TP_year, TP_mon) {
+  foreach(j = 1:nrow(TP_year), .combine = rbind.data.frame) %do% {
+    d_year = TP_year[j, ]
+    diffday_ym <- diffday(d_year$date, TP_mon$date)
+    I0 <- which.min(abs(diffday_ym))
+
+    d_year %>%
+      rename(date_year = date) %>%
+      mutate(date_mon = TP_mon$date[I0], .before = date_year) %>%
+      mutate(diffday_ym = diffday_ym[I0])
+  }
+}
 
 #' TP_mergeYM_sites
 #'
 #' @param res2 object returned by [RHtests()]
 #' @export
-TP_mergeYM_sites <- function(res2) {
+TP_mergeYM_sites <- function(res) {
+  res2 = RHtests_rm_empty(res) # year & mon 必须同时含有
   sites <- names(res2) %>% as.integer() %>% set_names(., .)
 
   lst <- foreach(sitename = sites, x = res2, i = icount()) %do% {
     runningId(i, 100)
-    TP_month <- TP_mergeYM(x)
-    cbind(site = sitename, TP_month)
+    TP_mon <- TP_mergeYM(x)
+    cbind(site = sitename, TP_mon)
   }
   do.call(rbind, lst)
 }

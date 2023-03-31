@@ -1,0 +1,20 @@
+```{r}
+f = "OUTPUT/ChinaHI/RHtests_v20230331_RH_avg_noRef_monthly.RDS"
+f = "OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_noRef_monthly.RDS"
+
+res = readRDS(f)
+res2 = RHtests_rm_empty(res) # year & mon 必须同时含有
+```
+
+
+```{r}
+
+# 有456个站点支持
+TP_year = map(res, ~.x$year$TP) %>% melt_list("site") %>% .[Idc == "YifD", ]
+TP_month = map(res, ~.x$month$TP) %>% melt_list("site") %>% .[Idc == "YifD", ]
+```
+
+```{r}
+TP2 = TP_mergeYM_sites(res)
+```
+
