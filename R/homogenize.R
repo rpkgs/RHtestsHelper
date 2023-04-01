@@ -33,18 +33,19 @@ homogenize_monthly <- function(df, st_moveInfo, sites, varname, ..., .parallel =
 homogenize_daily <- function(df, lst_TP, varname = "Tavg", ..., 
   .parallel = FALSE, nsite = NULL) 
 {
-  sites <- names(lst_TP) %>% as.integer() %>% set_names(., .)
+  sites <- names(lst_TP) %>% as.integer()
   n = length(sites)
   nsite <- ifelse(!is.null(nsite), pmin(n, nsite), n) 
 
   `%dof%` <- get_dof(.parallel) # get do function
-  res_daily <- foreach(sitename = sites, TP = lst_TP, i = icount(nsite)) %dof% {
+  res_daily <- foreach(TP = lst_TP, sitename = sites, i = icount(nsite)) %dof% {
     sitename = sites[i]
     runningId(i, 10)
     # 1. meta支持的TP
     # 2. month和yearly同时检测出的TP
     TP = lst_TP[[as.character(sitename)]]
-    TP = TP[kind == 0 || abs(year(date) - year(date_year) <= 1), ]
+    TP %<>% TP_high_conf()
+    # TP = TP[kind == 0 || abs(year(date) - year(date_year) <= 1), ]
     
     tryCatch({
       l = get_Input(df, sitename, varname)

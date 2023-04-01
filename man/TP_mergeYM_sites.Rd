@@ -5,9 +5,9 @@
 \alias{TP_mergeYM_sites}
 \title{TP_mergeYM_sites}
 \usage{
-TP_mergeYM(l)
+TP_mergeYM(l, site = NULL)
 
-TP_mergeYM_sites(res2)
+TP_mergeYM_sites(res)
 }
 \arguments{
 \item{l}{Object returned by \code{\link[=homogenize.wRef]{homogenize.wRef()}}, a list with the elements of
@@ -16,7 +16,7 @@ TP_mergeYM_sites(res2)
 \item month
 }}
 
-\item{res2}{object returned by \code{\link[=RHtests]{RHtests()}}}
+\item{res}{object returned by \code{\link[=RHtests]{RHtests()}}}
 }
 \description{
 TP_mergeYM_sites

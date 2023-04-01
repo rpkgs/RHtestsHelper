@@ -1,20 +1,67 @@
 ```{r}
 f = "OUTPUT/ChinaHI/RHtests_v20230331_RH_avg_noRef_monthly.RDS"
-f = "OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_noRef_monthly.RDS"
+# f = "OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_noRef_monthly.RDS"
 
 res = readRDS(f)
 res2 = RHtests_rm_empty(res) # year & mon 必须同时含有
+
+sites_good = setdiff(names(res), names(res2))
+
+# 至少要有50年的数据
+st_met2481[site %in% sites_good, ][n_all/365 >= 50, ]
 ```
 
 
 ```{r}
+con_year <- map(res2, "year") %>% sapply(is.null)
+con_mon <- map(res2, "month") %>% sapply(is.null)
 
-# 有456个站点支持
-TP_year = map(res, ~.x$year$TP) %>% melt_list("site") %>% .[Idc == "YifD", ]
-TP_month = map(res, ~.x$month$TP) %>% melt_list("site") %>% .[Idc == "YifD", ]
+# 仅有一方含有TP
+l_mon = which(con_year & !con_mon) %>% res2[.]
+TP_mon = l_mon %>%
+  map_df(~ .x$month$TP, .id = "site") %>%
+  .[Idc == "YifD"] %>%
+  mutate(date_mon = date, date_year = NA_Date_, .after = date) %>%
+  mutate(diffday_ym = NA, scale = "mon")
+
+l_year = which(con_mon & !con_year) %>% res2[.]
+TP_year = l_year %>%
+  map_df(~ .x$year$TP, .id = "site") %>%
+  .[Idc == "YifD", ] %>%
+  mutate(date_mon = NA_Date_, date_year = date, .after = date) %>%
+  mutate(diffday_ym = NA, scale = "year")
+TP1 = rbind(TP_mon, TP_year) %>%
+  arrange(site, date) %>%
+  mutate(site = as.integer(site))
 ```
 
+
+
 ```{r}
-TP2 = TP_mergeYM_sites(res)
+# 比之前会多出来一些TP
+TP = TP_mergeYM_sites(res2) # 3018, 1429, --> 4216, 1992, 1355站点含有突变
+TP %>% split_site() %>% length()
+```
+```{r}
+TP_high = TP %>% TP_high_conf()
+sites_year = TP_high[scale == "year", site]
+sites_check = TP_high[site %in% sites_year, .N, site][N > 1, site]
+```
+
+
+
+```{r}
+# TP2 = TP_mergeYM_sites(res)
+# pdat = TP2[, .N, .(year(date))] %>% arrange(year)
+pdat = TP2[, .(year = year(date)), site]
+brks = seq(1970, 2022, 1)
+
+p = ggplot(pdat, aes(x = year)) + 
+  geom_histogram(breaks = brks) + # (x1, x2]
+  stat_bin(geom = "text", 
+    breaks = brks, 
+    vjust = -0.2, 
+    aes(y = after_stat(count), label = after_stat(count))) 
+write_fig(p, 'd:/Rplot.pdf', 10, 5)
 ```
 
