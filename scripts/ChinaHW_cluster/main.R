@@ -39,7 +39,7 @@ version <- glue("RHtests_v{date}")
 ## Input data
 main_RHtests_met2481 <- function(
   varname = "RH_avg", 
-  version = "v20230328") 
+  version = "v20230331") 
 {
   sites <- df[, .N, .(site)]$site
   st = st_met2481[site %in% sites]
@@ -68,35 +68,35 @@ main_RHtests_met2481 <- function(
   }
 
   # 获取需要调整的站点
-  ok("Merging TPs of yearly and monthly input ...")
-  info <- TP_mergeYM_sites(res_noRefMon)
-  info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
-  sites_adj = info2[, .N, .(site)][, site]
-
+  TP <- TP_mergeYM_sites(res_noRefMon)
+  TP_high <- TP %>% TP_high_conf()
+  sites_adj = TP_high[, .N, .(site)][, site]
+  lst_TP <- TP_high %>% split_site()
+  siteHomoInfo <- query_siteHomoInfo(res_noRefMon, TP)
+  
   ## 2. 带有参考站的（withRef）均一化检测
   # ? 如果WithRef未检测到TP，withRef是否有可能检测到？
   if (!file.exists(f_Ref_day)) {
     ### 2.1. 挑选参考站
-    if (!file.exists(f_stRef)) {
-      mat_mon = convert_day2mon(df, varname)
+    # if (!file.exists(f_stRef)) {
+      load(f_stRef)
+      # mat_mon = convert_day2mon(df, varname)
+      # if (!isTRUE(all.equal(colnames(mat_mon), as.character(st$site)))) {
+      #   stop("check site names order first!")
+      # }
+      # ok("Finding Reference sites ...")
+      # st_refs <- st_refer(st, mat_mon, nsite = NULL, .parallel = TRUE)
 
-      if (!isTRUE(all.equal(colnames(mat_mon), as.character(st$site)))) {
-        stop("check site names order first!")
-      }
-
-      ok("Finding Reference sites ...")
-      st_refs <- st_refer(st, mat_mon, nsite = NULL, .parallel = TRUE)
+      # 单纯更新`st_refer_opt`即可
+      ## TODO: 参考站选取
+      
       st_refs_opt <- st_refer_opt(st_refs, sites_adj)
       d_refs <- melt_list(st_refs_opt, "target")
-
-      # 这里可能写出了
       sites_miss <- setdiff(sites, d_refs$target) %>% as.character()
-      # length(sites_miss)
-      save(st_refs, st_refs_opt, d_refs, sites_miss, file = f_stRef)
-    } else {
-      load(f_stRef)
-    }
-
+    #   save(st_refs, st_refs_opt, d_refs, sites_miss, file = f_stRef)
+    # } else {
+    #   load(f_stRef)
+    # }
     inds <- d_refs$target %>% set_names(seq_along(.), .)
     m <- nrow(d_refs)
     ok("Homogenization withRef ...")
@@ -105,15 +105,14 @@ main_RHtests_met2481 <- function(
     res_ref <- foreach(i = inds, icount()) %dopar% {
       runningId(i)
       # if (i == 2) break()
+      ## TODO: update this part
       site_target <- d_refs$target[i]
       site_refer <- d_refs$site[i]
-      i_t <- match(site_target, sites)
-      i_r <- match(site_refer, sites)
-
-      d_target <- lst[[i_t]]
-      d_refer <- lst[[i_r]]
+      d_target <- lst[[as.character(site_target)]]
+      d_refer <- lst[[as.character(site_refer)]]
       d <- merge(d_target, d_refer %>% set_names(c("date", "ref")), all.x = TRUE)
-
+      # ----------------------------
+      
       metadata <- get_metadata(d, site_target)
 
       tryCatch({
@@ -126,51 +125,9 @@ main_RHtests_met2481 <- function(
   } else {
     res_ref <- readRDS(f_Ref_day)
   }
-
+  
   ## 3. 数据清洗
-  df_final = merge_refer(df, f_Ref_day, f_noRef_day, varname)
+  df_final = merge_refer2(df, f_Ref_day, f_noRef_day, varname)
   fwrite(df_final, f_final)
 }
 
-
-merge_refer <- function(df, l_Ref_day, l_noRef_day, varname = "RH_avg") {
-  if (is.character(l_Ref_day)) l_Ref_day %<>% readRDS()
-  if (is.character(l_noRef_day)) l_noRef_day %<>% readRDS()
-
-  sites = df$site %>% unique_sort()  
-  ### 3.1. with refer, 含有TP的部分
-  # res_ref <- readRDS(f_Ref_day)
-  TPs <- map(l_Ref_day, ~ .$day$TP)
-  inds_fixed <- which.notnull(TPs)
-
-  # > TPs 不为空的站点，采用`homogenize.wRef`修正；其余的采用no-ref进行修正
-  d_ref <- map(l_Ref_day[inds_fixed], ~ .$day$data[, .(date, QM_adjusted)]) %>%
-    melt_list("site") %>%
-    rename({{ varname }} := QM_adjusted)
-
-  sites_ref = as.integer(names(l_Ref_day))
-  sites_ref_yes = d_ref$site %>% unique_sort() # with TP
-  sites_miss = setdiff(sites, sites_ref) # %>%
-
-  ### 3.2. without refer, 含有TP的部分
-  d_noref <- l_noRef_day[as.character(sites_miss)] %>%
-    map(~ .$data[, .(date, QM_adjusted)]) %>%
-    rm_empty() %>%
-    melt_list("site") %>%
-    rename({{ varname }} := QM_adjusted)
-  sites_noref_yes = d_noref$site %>% unique_sort() # with TP
-
-  sites_org <- setdiff(sites, c(sites_ref_yes, sites_noref_yes)) %>% as.character()
-
-  linfo_site = list(Ref = sites_ref_yes, NoRef = sites_noref_yes, Original = sites_org) %>%
-    map(as.integer) # %>% str()
-  # str(linfo_site)
-
-  ## merge the unfixed and fixed
-  df_org = df[site %in% as.integer(sites_org), ] %>%
-    select(all_of(c("site", "date", varname)))
-
-  df_final = list("Original" = df_org, NoRef = d_noref, Ref = d_ref) %>%
-    melt_list("type_homo") %>%
-    rename_vars("value", varname)
-}

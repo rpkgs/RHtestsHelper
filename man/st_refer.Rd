@@ -7,7 +7,7 @@
 \usage{
 st_refer(st, mat_month, .parallel = FALSE, nsite = NULL, ..., sites_bad = NULL)
 
-st_refer_opt(st_refs, sites_worst)
+st_refer_opt(st_refs, sites_worst = NULL)
 }
 \arguments{
 \item{st}{A dataframe of the sites location and covering period information,

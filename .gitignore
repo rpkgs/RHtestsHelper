@@ -15,3 +15,4 @@ OUTPUT/example*/
 
 *.ipynb
 log.txt
+debug

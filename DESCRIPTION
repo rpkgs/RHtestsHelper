@@ -10,7 +10,7 @@ Authors@R:
 Description: What the package does (one paragraph).
 License: MIT + file LICENSE
 Imports: 
-    dplyr, 
+    dplyr, purrr,
     matrixStats, 
     RHtests
 Suggests: 

@@ -60,49 +60,6 @@ st_refer <- function(st, mat_month, .parallel=FALSE, nsite = NULL, ..., sites_ba
   }
 }
 
-#' get the optimal reference site for each site
-#'
-#' @param st_refs object returned by [st_refer()]
-#' @param sites_worst sites where TP is confirmed by both of monthly and yearly data
-#'
-#' @rdname st_refer
-#' @export
-st_refer_opt <- function(st_refs, sites_worst) {
-  # filter bad sites out
-  st_refs2 <- map(st_refs, function(x) {
-    if (is.null(x)) {
-      return(NULL)
-    } else {
-      x <- x[perc_cov > 0.8 & perc_cov_period > 0.8]
-      x <- x[!(site %in% sites_worst) & cor >= 0.8]
-
-      if (nrow(x) == 0) {
-        return(NULL)
-      }
-
-      cor_min <- 0.7
-      if (nrow(x[cor >= 0.90]) >= 5) cor_min <- 0.90
-      if (nrow(x[cor >= 0.85]) >= 5) cor_min <- 0.85
-      if (nrow(x[cor >= 0.80]) >= 5) cor_min <- 0.80
-      x <- x[cor >= cor_min, ]
-      x
-    }
-  })
-
-  # 这里也存在一些bug
-  out <- map(st_refs2, function(x) {
-    if (is.null(x)) {
-      NULL
-    } else {
-      x[which.max(perc_cov), ]
-    }
-  })
-  nmiss <- which.isnull(out) %>% length()
-  warn(sprintf("[w] %s sites have no reference site!\n", nmiss))
-  out
-}
-
-
 #' the percentage of overlaped date period of x and y to the length of period x
 #'
 #' @param x A vector with `date_begin` and `date_end`.
@@ -120,6 +77,44 @@ period_coverage <- function(x, y) {
   # n_miss_head = difftime(x[1], date_begin, units = "days")
   # n_miss_tail = -difftime(x[2], date_begin, units = "days")
   # as.numeric(n_miss_head + n_miss_tail)
+}
+
+filter_good_refer <- function(st_refs, sites_worst = NULL) {
+  map(rm_empty(st_refs), function(x) {
+    if (!is.null(sites_worst)) {
+      x <- x[!(site %in% sites_worst) & cor >= 0.8]
+    }
+    # x <- x[perc_cov > 0.8 & perc_cov_period > 0.8, ]
+    x <- x[perc_cov > 0.8, ]
+
+    if (nrow(x) == 0) return(NULL)
+    cor_min <- 0.7
+    if (nrow(x[cor >= 0.90]) >= 5) cor_min <- 0.90
+    if (nrow(x[cor >= 0.85]) >= 5) cor_min <- 0.85
+    if (nrow(x[cor >= 0.80]) >= 5) cor_min <- 0.80
+    x <- x[cor >= cor_min, ]
+    x
+  }) %>% rm_empty()
+}
+
+#' get the optimal reference site for each site
+#' 
+#' @param st_refs object returned by [st_refer()]
+#' @param sites_worst sites where TP is confirmed by both of monthly and yearly data
+#' 
+#' @rdname st_refer
+#' @export
+st_refer_opt <- function(st_refs, sites_worst = NULL) {
+  # filter bad sites out
+  st_refs2 <- filter_good_refer(st_refs, sites_worst)
+
+  # 这里有改进空间
+  out <- map(st_refs2, function(x) {
+    x[which.max(perc_cov), ]
+  })
+  nmiss <- length(st_refs) - length(out) # which.isnull(out) %>% length()
+  warn(sprintf("[w] %s sites have no reference site!\n", nmiss))
+  out
 }
 
 #' select reference sites

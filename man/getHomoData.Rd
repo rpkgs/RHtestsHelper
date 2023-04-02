@@ -4,7 +4,7 @@
 \alias{getHomoData}
 \title{getHomoData}
 \usage{
-getHomoData(lst)
+getHomoData(lst, extract.day = FALSE)
 }
 \description{
 getHomoData

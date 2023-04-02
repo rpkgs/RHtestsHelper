@@ -37,16 +37,16 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
 
   r <- list(year = r_year, month = r_month)
   r$TP <- TP_mergeYM(r)
-  TP <- TP_high_conf(r$TP, nyear = 1) # mask bad ones
+  TP_high <- TP_high_conf(r$TP, nyear = 1) # mask bad ones
+  r$TP_high <- TP_high
 
-  r$day <- if (!is.null(TP) && nrow(TP) != 0) {
-    RHtests_stepsize(l$day[, I_base], ref_day, TP, prefix = prefix, is_plot = FALSE)
+  r$day <- if (!is.null(TP_high) && nrow(TP_high) != 0) {
+    RHtests_stepsize(l$day[, I_base], ref_day, TP_high, prefix = prefix, is_plot = FALSE)
   } else {
     NULL
   }
-  r$TP_high_conf <- TP
-
-  names <- c("year", "month", "day", "TP", "TP_high_conf")
+  
+  names <- c("year", "month", "day", "TP", "TP_high")
   r[names] %>% set_names(names)
 }
 
