@@ -23,7 +23,7 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
 
   has_ref <- ncol(d) == 3
   l <- RHtests_input(d) # %>% str()
-  
+
   if (has_ref) {
     ref_year  <- l$year[, I_ref]
     ref_month <- l$month[, I_ref]
@@ -45,36 +45,77 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
   } else {
     NULL
   }
-  
+
   names <- c("year", "month", "day", "TP", "TP_high")
   r[names] %>% set_names(names)
 }
 
 
-#' @param lst List of multiple sites data.frame
-#' The data.frame of each site:
-#' - if 3 columns, they are `date`, `varname` and `ref`, and homo with ref will
-#' be used.
-#' - if 2 columns, they are `date`, `varname`, and homo without ref will
-#' be used.
-#' @param st_moveInfo A data.frame with the site relocation moving information
-#'
+# #' @param lst List of multiple sites data.frame
+# #' The data.frame of each site:
+# #' - if 3 columns, they are `date`, `varname` and `ref`, and homo with ref will
+# #' be used.
+# #' - if 2 columns, they are `date`, `varname`, and homo without ref will
+# #' be used.
+# #' @param st_moveInfo A data.frame with the site relocation moving information
+# #'
+# #' @rdname homogenize.wRef
+# #' @export
+# homogenize.wRef.list <- function(lst, st_moveInfo, ...,
+#   .parallel = FALSE, .debug = FALSE)
+# {
+#   sites <- names(lst) %>% set_names(., .)
+
+#   res <- foreach(d = lst, sitename = sites, i = icount()) %dopar% {
+#     runningId(i)
+#     tryCatch({
+#       prefix <- "./OUTPUT/example01"
+#       metadata <- get_metadata(d, sitename)
+#       r <- homogenize.wRef(d, metadata)
+#     }, error = function(e) {
+#       message(sprintf("[%d] %s", i, e$message))
+#     })
+#   }
+#   res
+# }
+
 #' @rdname homogenize.wRef
 #' @export
-homogenize.wRef.list <- function(lst, st_moveInfo, ..., 
-  .parallel = FALSE, .debug = FALSE) 
-{
-  sites <- names(lst) %>% set_names(., .)
-  
-  res <- foreach(d = lst, sitename = sites, i = icount()) %dopar% {
-    runningId(i)
-    tryCatch({
-      prefix <- "./OUTPUT/example01"
-      metadata <- get_metadata(d, sitename)
-      r <- homogenize.wRef(d, metadata)
-    }, error = function(e) {
-      message(sprintf("[%d] %s", i, e$message))
-    })
+homo_withRef <- function(site_target, df_day, st_refs, siteHomoInfo, nmax = 5, ..., debug = TRUE) {
+  st_raw = st_refs[[site_target]] %>% cbind(target = site_target, .)
+  st = tidy_st_refer(st_raw, siteHomoInfo, nmax = nmax)
+
+  if (is_empty(st)) return(NULL)
+  l = getInput_refer(df_day, st)
+  d = l$Ref
+  metadata <- get_metadata(d, site_target)
+
+  tryCatch({
+    r <- homogenize.wRef(d, metadata)
+  }, error = function(e) {
+    message(sprintf("[%d] %s", i, e$message))
+  })
+
+  if (debug) {
+    p = plot_check_input(l)
+    write_fig(p, "FigureS1_check_Input.pdf", 8, 6)
+
+    p = plot_check_out(r)
+    write_fig(p, "FigureS2_check_out.pdf", 8, 3)
   }
-  res
+  r
+}
+
+#' @rdname homogenize.wRef
+#' @export
+homo_withRef_multi <- function(df_day, st_refs, siteHomoInfo, nmax = 5, ..., debug = TRUE) {
+  sites_all = siteHomoInfo[homo != "Yes", site] %>% as.character() %>% set_names(., .)
+
+  i = 0
+  plyr::llply(sites_all, function(site_target) {
+    i <<- i + 1
+    runningId(i, 5)
+
+    homo_withRef(site_target, df_day, st_refs, siteHomoInfo, nmax, debug = debug, ...)
+  }) %>% rm_empty()
 }

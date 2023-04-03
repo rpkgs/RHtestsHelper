@@ -89,7 +89,6 @@ main_RHtests_met2481 <- function(
 
       # 单纯更新`st_refer_opt`即可
       ## TODO: 参考站选取
-      
       st_refs_opt <- st_refer_opt(st_refs, sites_adj)
       d_refs <- melt_list(st_refs_opt, "target")
       sites_miss <- setdiff(sites, d_refs$target) %>% as.character()
@@ -130,4 +129,3 @@ main_RHtests_met2481 <- function(
   df_final = merge_refer2(df, f_Ref_day, f_noRef_day, varname)
   fwrite(df_final, f_final)
 }
-

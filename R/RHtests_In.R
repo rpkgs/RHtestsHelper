@@ -8,7 +8,7 @@
 get_metadata <- function(d, sitename) {
   date_begin <- first(d$date)
   date_end <- last(d$date)
-  
+
   # 站点迁移信息, fix error v20230224
   metadata <- tidymet::st_moveInfo[site == sitename, ] %>%
     .[period_date_begin > date_begin &
@@ -53,10 +53,11 @@ getInput_refer <- function(df_mat, st_refer) {
 
   site <- st_refer$target[1] %>% as.character()
   sites_refer <- st_refer$site %>% as.character()
+
   d_ref <- df_mat[, ..sites_refer] #%>% as.matrix()
   # base <- df_mat[, ..site][, 1]
   raw = df_mat %>% select(all_of(c("date", site))) %>% set_names(c("date", "base"))
-  ref = rowWeightedMeans(as.matrix(d_ref), st_refer$cor, na.rm = TRUE)
+  ref = rowWeightedMeans(as.matrix(d_ref), st_refer$cor^2, na.rm = TRUE)
 
   data = cbind(raw, d_ref)
   anomaly = cbind(date, raw$base - d_ref)
@@ -70,20 +71,17 @@ get_yearly <- function(d) {
   d[, lapply(.SD, mean, na.rm = TRUE), .(year(date))]
 }
 
-plotInput_checkRef <- function(l) {
-  my_theme <- function() {
-    list(
-      labs(x = NULL, y = NULL)
-    )
-  }
-
+plot_check_input <- function(l) {
+  # my_theme <- function() {
+  #   list(labs(x = NULL, y = NULL))
+  # }
   dat = l$data %>% get_yearly() %>%
     melt(c("year", "base"), variable.name = "site")
 
   p1 = ggplot(dat, aes(year, value, color = site)) +
     geom_line() +
-    geom_line(aes(y = base), color = "black") + 
-    my_theme()
+    geom_line(aes(y = base), color = "black") +
+    labs(x = NULL, y = "Original")
   # write_fig(p, "a.pdf")
 
   ## 2. anomaly
@@ -93,23 +91,33 @@ plotInput_checkRef <- function(l) {
     mutate(anomaly = base - ref)
 
   p2 = ggplot(dat, aes(year, value, color = site)) +
-    geom_line() + 
-    geom_line(data = dat_avg, aes(y = anomaly, color = NULL), color = "black", linewidth = 1) + 
-    my_theme()
-  
+    geom_line() +
+    geom_line(data = dat_avg, aes(y = anomaly, color = NULL), color = "black", linewidth = 1) +
+    labs(x = NULL, y = "Anomaly")
+
   ## 3. averaged
   pdat = dat_avg[, .(year, base, ref)] %>% melt(c("year"))
   p3 = ggplot(pdat, aes(year, value, color = variable)) +
-    geom_line() + 
-    scale_color_manual(values = c("black", "red")) + 
-    my_theme()
+    geom_line() +
+    scale_color_manual(values = c("black", "red")) +
+    labs(x = NULL, y = "Homogenized")
   p = p1 / p2 / p3
 }
 
+plot_check_out <- function(l) {
+  d_out = r$day$data[, .(date, base, ref = QM_adjusted)] %>% get_yearly()
+  if (is.null(d_out)) return(NULL)
+
+  pdat = d_out %>% melt(c("year"))
+  p = ggplot(pdat, aes(year, value, color = variable)) +
+    geom_line() +
+    scale_color_manual(values = c("black", "red")) +
+    labs(x = NULL, y = NULL)
+  p
+}
 
 
-
-convert_df2day <- function(df, varname = "RH_avg", ...) {
+convert_df2day <- function(df, varname = "value", ...) {
   ## daily转monthly
   date_begin <- min(df$date)
   date_end <- max(df$date)
@@ -130,7 +138,7 @@ convert_df2day <- function(df, varname = "RH_avg", ...) {
 convert_day2mon <- function(
     df, varname = "RH_avg", ...,
     fun = colMeans2, max.nmiss = 3) {
-  
+
   ## daily转monthly
   date_max <- max(df$date)
   date_min <- min(df$date)
