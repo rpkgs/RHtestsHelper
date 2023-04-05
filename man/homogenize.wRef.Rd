@@ -6,7 +6,12 @@
 \alias{homo_withRef_multi}
 \title{Homogeneous time series data with reference series}
 \usage{
-homogenize.wRef(d, metadata = NULL, prefix = "./OUTPUT/example01")
+homogenize.wRef(
+  d,
+  metadata = NULL,
+  prefix = "./OUTPUT/example01",
+  verbose = FALSE
+)
 
 homo_withRef(
   site_target,

@@ -106,7 +106,8 @@ query_fileList <- function(
     varname = "RH_avg",
     version = "v20230331",
     version_ref = "v20230403") {
-
+  
+  f_HomoInfo  <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_siteHomoInfo.csv")
   f_stRef     <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_st_refer.rda")
   f_noRef_mon <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.RDS")
   f_noRef_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.RDS")
@@ -115,6 +116,7 @@ query_fileList <- function(
   f_final     <- glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_RHtests_{version_ref}_{varname}.csv")
 
   list(
+    homoInfo    = f_HomoInfo,
     stRef       = f_stRef,
     noRef_mon   = f_noRef_mon,
     noRef_day   = f_noRef_day,

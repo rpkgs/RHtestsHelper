@@ -66,19 +66,6 @@ getInput_refer <- function(df_mat, st_refer) {
   listk(data, anomaly, Ref)
 }
 
-
-#' @importFrom rlang parse_exprs eval_bare expr
-get_yearly <- function(d, by = NULL) {
-  by <- by %||% ""
-  .by <- parse_exprs(by)
-  by2 <- expr(list(year(date), !!!.by))
-
-  expr <- expr(d[, lapply(.SD, mean, na.rm = TRUE), !!by2])
-  # print(expr)
-  rlang::eval_bare(expr)
-}
-
-
 plot_check_input <- function(l) {
   # my_theme <- function() {
   #   list(labs(x = NULL, y = NULL))

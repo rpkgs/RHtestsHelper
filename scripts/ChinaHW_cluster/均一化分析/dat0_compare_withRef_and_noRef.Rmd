@@ -23,7 +23,7 @@ f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
 ```{r}
 f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
 df <- import_fst(f_input)
-df_year_org <- df[, .(site, date, value = RH_avg)] %>% dt_day2year()
+df_year_org <- df[, .(site, date, value = RH_avg)] %>% dt_day2year() %>% .$year
 
 varname = "RH_avg"
 f_noref = "Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_noRef_daily.RDS"

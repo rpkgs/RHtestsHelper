@@ -1,0 +1,146 @@
+```{r}
+# source("scripts/ChinaHW_cluster/main.R")
+library(data.table)
+library(tidyfst)
+library(Ipaper)
+library(purrr)
+library(rtrend)
+library(gg.layers)
+library(tidymet)
+library(sf)
+library(ggplot2)
+library(gg.layers)
+library(rcolors)
+library(patchwork)
+library(changepoint)
+# source("scripts/ChinaHW_cluster/main_vis.R", encoding = "UTF-8")
+# source('scripts/ChinaHW_cluster/均一化分析/main_trend.R')
+
+f_org <- "OUTPUT/ChinaHI/Trend/trend_original.rda"
+f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
+```
+
+```{r}
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
+df <- import_fst(f_input)
+l_org <- df[, .(site, date, value = RH_avg)] %>% dt_day2year()
+
+fs = query_fileList()
+siteHomoInfo = fread(fs$homoInfo)
+sites_homo = siteHomoInfo[homo == "Yes", site] %>% as.character() # 413个站点
+# 换个名字
+```
+
+## 0.1. 均值检验与方差检验
+
+```{r}
+# Example of a change in scale parameter (mean and variance) at 100 in simulated gamma data
+set.seed(1)
+x <- c(rgamma(100, shape = 1, rate = 1), rgamma(100, shape = 1, rate = 5))
+
+r = cpt.meanvar(x, penalty = "SIC", method = "AMOC", test.stat = "Gamma", class = FALSE, shape = 1) # returns 97 to
+
+```
+
+```{r}
+info <- l_org$mon[, .(n_all = .N, n_miss = sum(is.na(value))), .(site)] %>%
+  mutate(perc_miss = n_miss / n_all, nyear = n_all / 12)
+info
+
+# cpt_meanvar(x)
+## 查看数据缺失的比例
+df_mon = l_org$mon %>% interp_hisavg_month()
+# df_mon[is.na(value), .N, site]
+# rm_empty(lst) %>% length()
+# lst[1:10]
+
+# 257个站点存在TP
+lst[sites_homo] %>% rm_empty() %>% length()
+
+## 展示数据突变前后的方差
+write_fig({
+  hist(info[n_miss > 0 & site %in% siteHomoInfo$site, ]$perc_miss*100)
+}, 'Rplot.pdf', 10, 5, show = F)
+# cpt检验
+# data.table(cpt = l@cpts) %>% 
+```
+
+# 1. 突变检验
+
+## 1.1. 均值与方差检验
+
+```{r}
+lst <- dt_dlply(df_mon, .(site),
+  ~ cpt_meanvar(.$value, .$date, minseglen = 24),
+  .progress = "text"
+) %>% rm_empty()
+# lst %<>% rm_empty()
+map_dbl(lst %>% rm_empty(), nrow) %>% table() %>% print()
+
+lst_homo = lst[sites_homo] %>% rm_empty() #%>% length()
+
+info = map(lst, function(d) {
+  data.table(TP = d$date[1], 
+    mean_a = d$mean[1], mean_b = d$mean[2], 
+    var_a = d$variance[1], var_b = d$variance[2]
+  )
+}) %>% melt_list("site")
+```
+
+```{r}
+write_fig({
+  par(mfrow = c(1, 3))
+  hist(info[, var_b - var_a])
+  hist(info[, mean_b - mean_a])
+  hist(info[, year(TP)], main = "突变年份")
+  # hist(info[n_miss > 0 & site %in% siteHomoInfo$site, ]$perc_miss*100)
+}, 'Rplot.pdf', 10, 5, show = F)
+# cpt检验
+# 均值下降，方差变大，且2005附近时间；
+code("Rplot.pdf")
+```
+
+## 1.2. bcp贝叶斯检验
+
+```{r}
+InitCluster(20)
+lst <- dt_dlply(df_mon, .(site),
+  ~ cpt_bcp(.$value, .$date),
+  .progress = "text", .parallel = TRUE
+) %>% rm_empty()
+# lst = map(lst, ~set_names(.x, c("date", "cpt", "prob")))
+length(lst)
+
+# map_dbl(lst, nrow) %>% table() %>% print()
+# lst_homo = lst[sites_homo] %>% rm_empty() #%>% length()
+
+info = map(lst, function(d) {
+  d[which.max(prob), ]
+  # data.table(TP = d$date[1], 
+  #   mean_a = d$mean[1], mean_b = d$mean[2], 
+  #   var_a = d$variance[1], var_b = d$variance[2]
+  # )
+}) %>% melt_list("site")
+```
+
+```{r}
+# bcp检测不出来
+write_fig({
+  # par(mfrow = c(1, 3))
+  # hist(info[, var_b - var_a])
+  # hist(info[, mean_b - mean_a])
+  hist(info[, year(date)], main = "突变年份")
+  # hist(info[n_miss > 0 & site %in% siteHomoInfo$site, ]$perc_miss*100)
+}, 'Figure2_TP_bcp.pdf', 10, 5, show = F)
+# cpt检验
+# 均值下降，方差变大，且2005附近时间；
+code("Figure2_TP_bcp.pdf")
+```
+
+## TODO
+
+测试采样从4次/d->24次/d，对RH的均值和方差的影响：
+
+- `手动站`：2, 8, 14, 20
+
+- `自动站`：1:24

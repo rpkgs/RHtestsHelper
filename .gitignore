@@ -14,5 +14,5 @@ OUTPUT/example*/
 *.fst
 
 *.ipynb
-log.txt
+log*
 debug

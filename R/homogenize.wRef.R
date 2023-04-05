@@ -10,10 +10,10 @@
 #' @param metedata A data.frame with column date indicating turning point
 #'
 #' @export
-homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
+homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01", verbose = FALSE) {
   indir <- dirname(prefix)
   if (!dir.exists(indir)) dir.create(indir, recursive = TRUE)
-
+  
   if (nrow(d) == 0) {
     message("no data!")
     return()
@@ -32,8 +32,10 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
     ref_year <- ref_month <- ref_day <- NULL
   }
   
-  r_month <- RHtests_process(l$month[, I_base], ref_month, metadata, prefix, is_plot = FALSE, maxgap = 366)
-  r_year <- RHtests_process(l$year[, I_base], ref_year, metadata, prefix, is_plot = FALSE, maxgap = 366)
+  r_month <- RHtests_process(l$month[, I_base], ref_month, metadata, 
+    verbose = verbose, prefix, is_plot = FALSE, maxgap = 366)
+  r_year <- RHtests_process(l$year[, I_base], ref_year, metadata, 
+    verbose = verbose, prefix, is_plot = FALSE, maxgap = 366)
 
   r <- list(year = r_year, month = r_month)
   r$TP <- TP_mergeYM(r)
@@ -41,7 +43,8 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
   r$TP_high <- TP_high
 
   r$day <- if (!is_empty(TP_high)) {
-    RHtests_stepsize(l$day[, I_base], ref_day, TP_high, prefix = prefix, is_plot = FALSE)
+    RHtests_stepsize(l$day[, I_base], ref_day, TP_high, prefix = prefix, 
+      verbose = verbose, is_plot = FALSE)
   } else {
     NULL
   }
