@@ -39,13 +39,13 @@ main_RHtests_met2481 <- function(
   load(fs$stRef)
   ## 2.2. 带有参考站的（withRef）均一化检测
   res_ref <- homo_withRef_multi(df_day, st_refs, siteHomoInfo, nmax = nmax, ..., debug = FALSE)
-  saveRDS(res_ref, file = f_Ref_day)
+  saveRDS(res_ref, file = fs$withRef_day)
 }
 
 ## 3. 数据清洗
 # df_final = merge_refer2(df, f_Ref_day, f_noRef_day, varname)
 # fwrite(df_final, f_final)
-# InitCluster(10)
+InitCluster(10)
 
 f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
 df <- import_fst(f_input)
@@ -56,7 +56,7 @@ version <- glue("RHtests_v{date}")
 version <- "v20230331"
 version_ref <- "v20230403"
 
-varnames <- c("RH_avg", "Tair_max", "Tair_avg")
+varnames <- c("RH_avg", "Tair_max", "Tair_avg")[2:3]
 for(varname in varnames) {
   main_RHtests_met2481(df, varname, version, version_ref)
 }

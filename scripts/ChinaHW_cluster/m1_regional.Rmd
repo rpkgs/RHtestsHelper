@@ -1,0 +1,67 @@
+```{r}
+library(sf.extract)
+library(terra)
+library(sf)
+library(Ipaper)
+library(exactextractr)
+
+poly = "//kong-nas/CMIP6/Researches/CMIP6/SpatioTemporalCluster.jl/data/shp/bou1_4p_dissolved.shp" %>% read_sf()
+
+
+dir_root = "Z:/ChinaHW/CMIP6_mergedFiles/ChinaHW_CMIP6_raw"
+vars = c("HI_tasmax", "huss", "tasmax") %>% set_names(., .)
+varname = "HI_tasmax"
+indir <- glue("{dir_root}/{varname}/historical")
+fs <- dir2(indir, "*.nc")
+```
+
+
+```{r}
+r <- rast(fs[6])
+dates <- time(r)
+lst <- seq_along(dates) %>% chunk(10)
+
+res = llply(lst, function(inds) {
+  ra = r[[inds]]
+  exactextractr::exact_extract(ra, poly, "weighted_mean", weights = "area")
+}, .progress = "text")
+```
+
+
+```{r}
+CMIP6RegionalMean <- function(f, poly) {
+  
+  fout = gsub(".nc$", ".csv", f)
+  if (file.exists(fout)) return(NULL)
+
+  print(basename(f))
+  r = rast(f)
+  res = sf.extract::st_extract(r, poly)
+  val = res[, -1] %>% as.matrix() %>% c()
+  d = data.table(date = time(r), value = val)
+  
+  fwrite(d, fout)
+  d
+  # d_year = get_yearly(d)  
+}
+
+terra::gdalCache(1024 * 100)
+# res = exactextractr::exact_extract(r, poly, "weighted_mean", weights = "area")
+
+lst = foreach(varname = vars, i = icount()) %do% {
+  runningId(i)
+
+  indir = glue("{dir_root}/{varname}/historical")
+  fs = dir2(indir, '*.nc')
+  map(fs, CMIP6RegionalMean, poly)
+}
+```
+
+
+```{r}
+library(ggplot2)
+
+p = ggplot(d_year, aes(year, value)) + 
+  geom_point()
+write_fig(p, 'Rplot.pdf', 10, 5)
+```

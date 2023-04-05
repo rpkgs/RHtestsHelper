@@ -31,7 +31,7 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
   } else {
     ref_year <- ref_month <- ref_day <- NULL
   }
-
+  
   r_month <- RHtests_process(l$month[, I_base], ref_month, metadata, prefix, is_plot = FALSE, maxgap = 366)
   r_year <- RHtests_process(l$year[, I_base], ref_year, metadata, prefix, is_plot = FALSE, maxgap = 366)
 
@@ -40,7 +40,7 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
   TP_high <- TP_high_conf(r$TP, nyear = 1) # mask bad ones
   r$TP_high <- TP_high
 
-  r$day <- if (!is.null(TP_high) && nrow(TP_high) != 0) {
+  r$day <- if (!is_empty(TP_high)) {
     RHtests_stepsize(l$day[, I_base], ref_day, TP_high, prefix = prefix, is_plot = FALSE)
   } else {
     NULL
@@ -82,7 +82,10 @@ homogenize.wRef <- function(d, metadata = NULL, prefix = "./OUTPUT/example01") {
 #' @rdname homogenize.wRef
 #' @export
 homo_withRef <- function(site_target, df_day, st_refs, siteHomoInfo, nmax = 5, ..., debug = TRUE) {
-  st_raw = st_refs[[site_target]] %>% cbind(target = site_target, .)
+  st_raw = st_refs[[site_target]]
+  if (is.null(st_raw)) return(NULL)
+
+  st_raw %<>% cbind(target = site_target, .)
   st = tidy_st_refer(st_raw, siteHomoInfo, nmax = nmax)
 
   if (is_empty(st)) return(NULL)
@@ -93,7 +96,7 @@ homo_withRef <- function(site_target, df_day, st_refs, siteHomoInfo, nmax = 5, .
   tryCatch({
     r <- homogenize.wRef(d, metadata)
   }, error = function(e) {
-    message(sprintf("[%d] %s", i, e$message))
+    message(sprintf("[%s] %s", site_target, e$message))
   })
 
   if (debug) {
@@ -108,14 +111,20 @@ homo_withRef <- function(site_target, df_day, st_refs, siteHomoInfo, nmax = 5, .
 
 #' @rdname homogenize.wRef
 #' @export
-homo_withRef_multi <- function(df_day, st_refs, siteHomoInfo, nmax = 5, ..., debug = TRUE) {
+homo_withRef_multi <- function(df_day, st_refs, siteHomoInfo, nmax = 5, ...,
+  debug = FALSE, .parallel = TRUE)
+{
   sites_all = siteHomoInfo[homo != "Yes", site] %>% as.character() %>% set_names(., .)
-
-  i = 0
-  plyr::llply(sites_all, function(site_target) {
-    i <<- i + 1
+  inds = seq_along(sites_all) %>% set_names(sites_all)
+  # i = 0
+  plyr::llply(inds, function(i) {
+    site_target = sites_all[i]
+    # i <<- i + 1
     runningId(i, 5)
-
-    homo_withRef(site_target, df_day, st_refs, siteHomoInfo, nmax, debug = debug, ...)
-  }) %>% rm_empty()
+    tryCatch({
+      homo_withRef(site_target, df_day, st_refs, siteHomoInfo, nmax, debug = debug, ...)
+    }, error = function(e) {
+      message(sprintf('%s', e$message))
+    })
+  }, .parallel = .parallel) # %>% rm_empty()
 }

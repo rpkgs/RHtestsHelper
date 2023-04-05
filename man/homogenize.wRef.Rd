@@ -18,7 +18,15 @@ homo_withRef(
   debug = TRUE
 )
 
-homo_withRef_multi(df_day, st_refs, siteHomoInfo, nmax = 5, ..., debug = TRUE)
+homo_withRef_multi(
+  df_day,
+  st_refs,
+  siteHomoInfo,
+  nmax = 5,
+  ...,
+  debug = FALSE,
+  .parallel = TRUE
+)
 }
 \arguments{
 \item{d}{A data.frame of the inputdata:
