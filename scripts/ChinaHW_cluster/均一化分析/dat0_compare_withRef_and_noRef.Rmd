@@ -39,8 +39,6 @@ l_noRef_day = l_noref
 ```
 
 ```{r}
-
-
 info = df_final[, .N, .(site, type_homo)][, .(site, type_homo)]
 
 ## 再给他添加上其他附属信息

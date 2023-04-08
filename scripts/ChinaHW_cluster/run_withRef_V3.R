@@ -24,7 +24,7 @@ main_RHtests_met2481 <- function(
   df_day <- convert_df2day(df_org)
   
   fs = query_fileList(varname, version, version_ref)
-
+  
   if (!file.exists(fs$homoInfo)) {
     df_year_org <- dt_day2year(df_org)$year
     sites_long <- query_site(df_year_org)
@@ -54,9 +54,8 @@ main_RHtests_met2481 <- function(
 
 # parallel works
 ncpus <- Sys.getenv("LSB_MAX_NUM_PROCESSORS") %>% as.numeric()
-InitCluster(ncpus)
 # print(ncpus)
-
+InitCluster(ncpus)
 
 f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
 df <- import_fst(f_input)

@@ -160,7 +160,7 @@ foreach(varname = varnames, i = icount(1)) %do% {
   print(info_TP)
 
   df_adj <- homo_cpt(df_org, info_TP, nyear = 5)
-  fwrite(df_adj, glue("OUTPUT/ChinaHI/RHtests_v20230331_{varname}-cpt_meanvar.fst"))
+  export_fst(df_adj, glue("OUTPUT/ChinaHI/RHtests_v20230408_{varname}_cpt.meanvar.fst"))
   
   # 618站点
   d_05 <- get_RegionalMean(df_adj)
@@ -169,6 +169,7 @@ foreach(varname = varnames, i = icount(1)) %do% {
   write_fig(p, glue("Figure1_{varname}_adjusted_by_cpt_5y.pdf"), 10, 5, show = F)
   write_fig(plot_TPyear(info_TP), glue("TP_year_{varname}.pdf"), 10, 5, show = F)
 }
+
 ## 合并数据
 sites_adj = query_site(df_adj)
 length(sites_adj)

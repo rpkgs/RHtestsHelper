@@ -109,14 +109,16 @@ query_fileList <- function(
   
   f_HomoInfo  <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_siteHomoInfo.csv")
   f_stRef     <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_st_refer.rda")
-  f_noRef_mon <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.RDS")
-  f_noRef_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.RDS")
+  f_cpt       <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_cpt.meanvar.fst")
+  f_noRef_mon <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.fst")
+  f_noRef_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.fst")
 
-  f_Ref_day   <- glue("OUTPUT/ChinaHI/RHtests_{version_ref}_{varname}_withRef_daily.RDS")
-  f_final     <- glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_RHtests_{version_ref}_{varname}.csv")
+  f_Ref_day   <- glue("OUTPUT/ChinaHI/RHtests_{version_ref}_{varname}_withRef_daily.fst")
+  f_final     <- glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_RHtests_{version_ref}_{varname}.fst")
 
   list(
     homoInfo    = f_HomoInfo,
+    cpt         = f_cpt, 
     stRef       = f_stRef,
     noRef_mon   = f_noRef_mon,
     noRef_day   = f_noRef_day,
