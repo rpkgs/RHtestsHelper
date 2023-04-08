@@ -1,0 +1,196 @@
+---
+jupyter: ir
+---
+
+```{r}
+#| vscode: {languageId: r}
+# source("scripts/ChinaHW_cluster/main.R")
+Ipaper::set_dirRoot()
+Ipaper::set_jupyter()
+
+library(data.table)
+library(tidyfst)
+library(Ipaper)
+library(purrr)
+library(rtrend)
+library(gg.layers)
+library(tidymet)
+library(sf)
+library(ggplot2)
+library(gg.layers)
+library(rcolors)
+library(patchwork)
+library(changepoint)
+# source("scripts/ChinaHW_cluster/main_vis.R", encoding = "UTF-8")
+# source('scripts/ChinaHW_cluster/均一化分析/main_trend.R')
+
+f_org <- "OUTPUT/ChinaHI/Trend/trend_original.rda"
+f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
+devtools::load_all()
+```
+
+```{r}
+#| vscode: {languageId: r}
+get_RegionalMean <- function(df_adj) {
+  d_yearly.adj = df_adj %>% get_yearly("site")
+  d_region.adj = dt_mean(d_yearly.adj %>% select(-site), .(year))
+  # d = d_region.adj %>% melt("year")
+  d_region.adj
+}
+
+plot_RegionalMean <- function(d_region) {
+  dat = melt(d_region, "year")
+  delta = 0.01
+  p = ggplot(dat, aes(year, value, color = variable, shape = variable)) +
+    geom_point() +
+    geom_line(aes(linetype = variable)) +
+    theme_gray(base_size = 14) +
+    theme(
+      legend.position = "top", 
+      legend.margin = margin(t = 0, b = -8), 
+      # legend.position = c(1 - delta / 2, 1 - delta),
+      # legend.justification = c(1, 1),
+      axis.title = element_text(face = "bold")
+    ) +
+    labs(x = NULL, y = "RH (%)", color = NULL, shape = NULL, linetype = NULL)
+}
+
+plot_TPyear <- function(info_TP) {
+  brks <- seq(1960, 2020, 2)
+  pdat <- info_TP[, .(site, year = year(TP))]
+
+  ggplot(pdat, aes(year)) +
+    geom_histogram(breaks = brks, binwidth = 0.02) + # (a, b]
+    stat_bin(aes(y = after_stat(count), label = after_stat(count)), breaks = brks, geom = "text", vjust = -0.2) +
+    scale_x_continuous(breaks = seq(1960, 2020, 10))
+}
+```
+
+# 1. scripts
+
+```{r}
+#| vscode: {languageId: r}
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
+df <- import_fst(f_input)
+df %<>% mutate(q_avg = RH2q(RH_avg, Tair_avg, Pa_avg))
+
+df_org <- df[, .(site, date, value = RH_avg)]
+l_org <- df_org %>% dt_day2year()
+
+fs <- query_fileList()
+siteHomoInfo <- fread(fs$homoInfo)
+sites_homo <- siteHomoInfo[homo == "Yes", site] %>% as.character() # 413个站点
+siteHomoInfo[, .N, homo]
+```
+
+```{r}
+#| vscode: {languageId: r}
+## monthly数据的缺失情况
+Ipaper::set_jupyter(7, 3.5)
+
+info <- l_org$mon[, .(n_all = .N, n_miss = sum(is.na(value))), .(site)] %>%
+  mutate(perc_miss = n_miss / n_all, nyear = n_all / 12)
+hist(info[n_miss > 0 & site %in% siteHomoInfo$site, ]$perc_miss * 100)
+
+print(info)
+```
+
+## 1.1. 相对湿度的矫正
+
+```{r}
+df_org <- df[, .(site, date, value = RH_avg)]
+l_org <- df_org %>% dt_day2year()
+df_mon <- l_org$mon %>% interp_hisavg_month()
+info_TP <- detect_TP_cpt(df_mon) # 采用monthly数据检测TP
+
+df_adj <- homo_cpt(df_org, info_TP, nyear = 5)
+# export_fst(df_adj, "OUTPUT/ChinaHI/RHtests_v20230331_RH_avg-cpt_meanvar.fst")
+# 只修正了786个自动化站点
+
+# 理想情况，摆脱极端干旱与极端湿润的年份
+d_05 = get_RegionalMean(df_adj)
+p = plot_RegionalMean(d_05)
+write_fig(p, 'Figure1_RH_adjusted_by_cpt_5y.pdf', 10, 5, show = F)
+```
+
+### 1.1.1. 突变前后的mean, sd
+```{r}
+#| vscode: {languageId: r}
+Ipaper::set_jupyter(10, 4)
+## 突变的年份
+old.par = par(mfrow = c(1, 3))
+hist(info_TP[, var_b - var_a])
+hist(info_TP[, mean_b - mean_a])
+# hist(info_TP[, year(TP)], main = "year of TP")
+par(old.par)
+```
+> 77.98% (786 out 1008)的站点均值和方差突变发生在2000年之后。
+
+### 1.1.2. 和metadata对比
+
+```{r}
+info2 = merge(info_TP[, .(site, TP)], 
+  st_moveInfo[, .(site, tag, moveTimes, period_date_begin, period_date_end)]) %>%
+  mutate(diffdays = diffday(TP, period_date_begin)) %>% 
+  .[, .SD[which.min(abs(diffdays)), ], .(site)]
+print(nrow(info2))
+
+# 检查站点迁移情况
+info2[abs(diffdays) <= 3*365, ] %>% .[year(TP) <= 2000, ] %>% 
+  arrange(TP) %>% 
+  print(n = 100)
+# 将info2保存出来
+```
+
+## 1.2. 温度
+
+```{r}
+## 采用cpt_meanvar进行矫正
+varnames = c("RH_avg", "Tair_max", "Tair_avg")
+varname = varnames[1]
+# varname = "Tair_max"
+foreach(varname = varnames, i = icount(1)) %do% {
+  fun = if(varname == "RH_avg") cpt.meanvar else cpt.mean
+
+  df_org = select(df, all_of(c("site", "date", varname))) %>% set_names(c("site", "date", "value"))
+  l_org <- df_org %>% dt_day2year()
+  df_mon <- l_org$mon %>% interp_hisavg_month()
+
+  info_TP <- detect_TP_cpt(df_mon, fun = fun) # 采用monthly数据检测TP
+  print(info_TP)
+
+  df_adj <- homo_cpt(df_org, info_TP, nyear = 5)
+  fwrite(df_adj, glue("OUTPUT/ChinaHI/RHtests_v20230331_{varname}-cpt_meanvar.fst"))
+  
+  # 618站点
+  d_05 <- get_RegionalMean(df_adj)
+  p = plot_RegionalMean(d_05)
+
+  write_fig(p, glue("Figure1_{varname}_adjusted_by_cpt_5y.pdf"), 10, 5, show = F)
+  write_fig(plot_TPyear(info_TP), glue("TP_year_{varname}.pdf"), 10, 5, show = F)
+}
+## 合并数据
+sites_adj = query_site(df_adj)
+length(sites_adj)
+df_org2 = rbind(df_org[site %!in% sites_adj, ], df_adj[, .(site, date, value = base)])
+```
+
+> 拟采用`ecdf`的结果
+
+```{r}
+old.par = par(mfrow = c(1, 2))
+# hist(info_TP[, var_b - var_a])
+hist(info_TP[, mean_b - mean_a])
+# hist(info_TP[, year(TP)], main = "year of TP")
+par(old.par)
+```
+
+```{r}
+# d_region = get_RegionalMean(df_org)
+ggplot(d_region, aes(year, value)) + 
+  geom_line()
+```
+
+## 1.3. 如果把把温度转化为比湿会出现怎样的现象？
+
+比湿不存在明显的突变。

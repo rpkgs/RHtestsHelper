@@ -8,15 +8,14 @@
 #'
 #' @export
 fix_uncontinue <- function(df, complete_year = TRUE) {
-    # df %>% group_by(site) %>% group_modify(fix_uncontinue_site)
-    df[, fix_uncontinue_site(.SD, complete_year = complete_year), .(site)] # about 2x faster
-    # ddply(df, .(site), fix_uncontinue_site, .progress = "text")
+  # df %>% group_by(site) %>% group_modify(fix_uncontinue_site)
+  df[, fix_uncontinue_site(.SD, complete_year = complete_year), .(site)] # about 2x faster
+  # ddply(df, .(site), fix_uncontinue_site, .progress = "text")
 }
 
 fix_uncontinue_site <- function(d, ..., complete_year = TRUE) {
   n <- nrow(d)
   # if (n <= 365*4) return(NULL)
-
   date_begin <- d$date %>% min()
   date_end <- d$date %>% max()
   

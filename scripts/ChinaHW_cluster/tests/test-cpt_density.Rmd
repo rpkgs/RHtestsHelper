@@ -1,0 +1,47 @@
+## 1. density
+```{r}
+# density绘图
+z1 = d[date < date_TP, value]
+z2 = d[date >= date_TP, value]
+
+p = ggplot(data.table(z = z1), aes(z)) +
+  geom_density() + 
+  geom_density(data = data.table(z = z2), color = "red")
+
+write_fig(p, 'Rplot.pdf', 10, 5, show=F)
+# write_fig({
+#   # plot(ecdf(z1))
+#   # plot(ecdf(z2), add = TRUE, col = "red")
+#   plot(den1)
+#   plot(den2, add = TRUE, col = "red")
+# }, 'Rplot.pdf', 10, 5, show = F)
+```
+
+## 1.1. QM矫正
+
+```{r}
+#| vscode: {languageId: r}
+## 其中一个站点
+Ipaper::set_jupyter(7, 4, 200)
+sitename <- 50525L
+
+date_TP <- info_TP[site == sitename, TP]
+# d = df_mon[site == sitename, ]
+d <- df_org[site == sitename, ]
+
+nyear <- 5
+d_adj_mon <- cpt_QM(d$value, d$date, date_TP, nyear = nyear, methods = c("ecdf", "norm")) %>%
+  get_yearly()
+
+pdat <- melt(d_adj_mon[, -2], c("year"))
+p <- ggplot(pdat, aes(year, value, color = variable)) +
+  geom_vline(xintercept = year(date_TP), color = "red", linetype = 2, linewidth = 1) +
+  geom_line(data = d_adj_mon, aes(y = base), color = "black") +
+  geom_line() + 
+  labs(color = NULL) + 
+  theme(
+    legend.position = "top",
+    legend.margin = margin(t = 0, b = -8)
+  )
+p
+```

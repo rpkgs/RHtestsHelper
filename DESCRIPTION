@@ -12,7 +12,8 @@ License: MIT + file LICENSE
 Imports: 
     dplyr, purrr, rlang,
     matrixStats, 
-    RHtests
+    RHtests, 
+    fitdistrplus
 Suggests: 
     testthat, plyr
 Remotes:
