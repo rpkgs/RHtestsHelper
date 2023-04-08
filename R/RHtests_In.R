@@ -131,7 +131,7 @@ convert_df2day <- function(df, varname = "value", ...) {
 }
 
 convert_day2mon <- function(
-    df, varname = "RH_avg", ...,
+    df, varname = "value", ...,
     fun = colMeans2, max.nmiss = 3) {
 
   ## daily转monthly

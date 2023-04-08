@@ -135,6 +135,3 @@ ggplot(trend_year, aes(y = slope)) +
 # save(df_year2, df_year2.anorm, df_month, trend_year.lm, trend_year.mk, st, file = file_mete_monthly)
 # saveRDS(df_sel, "OUTPUT/INPUT_HImete_daily_st2138.RDS")
 ```
-
-## TODO
-

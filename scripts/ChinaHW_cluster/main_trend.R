@@ -40,8 +40,6 @@ aggregate_year <- function(df, varnames, fout = NULL, ...) {
     # info[N >= 55, ] # 至少有55年的数据
     res <- merge(ans, info[N >= 55, .(site)])
   }
-
-  
   save(lst_mon, lst_year, l_trend, df, file = fout)
   # list(mon = lst_mon, year = lst_year)
 }

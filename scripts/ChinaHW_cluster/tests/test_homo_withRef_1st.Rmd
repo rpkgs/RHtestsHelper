@@ -17,46 +17,6 @@ df = import_fst(f_input)
 sites <- df[, .N, .(site)]$site
 ```
 
-## original
-```{r}
-# InitCluster(10)
-varnames = c("Tair_max", "Tair_avg", "RH_avg")
-
-varname <- "Tair_max"
-version <- "v20230228"
-
-# sites_bad <- c(50548, 54416, 54916, 58942, 59265) %>% as.character()
-run_noRef <- function(varname) {
-  f_month <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.RDS")
-  f_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.RDS")
-
-  if (!file.exists(f_month)) {
-    # sink("log.txt")
-    res <- homogenize_monthly(df, st_moveInfo, sites, varname, .parallel = TRUE)
-    res2 <- RHtests_rm_empty(res)
-    saveRDS(res2, f_month)
-    # sink(NULL)
-  } else {
-    res2 = readRDS(f_month)
-  }
-  
-  # merge yearly and monthly TP
-  # info <- TP_mergeYM_sites(res2)
-  # info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
-  # sites_adj = info2[, .N, .(site)][, site]
-
-  # # res_adj = res2[sites_adj]
-  # lst_TP <- split(info2, info2$site)
-  # out <- homogenize_daily(df, lst_TP, varname, .parallel = TRUE)
-  # saveRDS(out, f_day)
-}
-
-foreach(varname = varnames, i = icount()) %do% {
-  run_noRef(varname)
-}
-```
-
-
 ## DEBUG
 
 ```{r}
@@ -71,13 +31,13 @@ sitename = sites_ex[1]
 l = get_Input(df, sitename, varname)
 
 prefix <- "./OUTPUT/example01"
-# r_month <- RHtests_process(l$month, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
-# r_year <- RHtests_process(l$year, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
+r_month <- RHtests_process(l$month, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
+r_year <- RHtests_process(l$year, NULL, l$metadata, prefix, is_plot = FALSE, maxgap = 366)
 
 st_moveInfo[site == sitename]
 info = TP_mergeYM(list(month = r_month, year = r_year))
 # info <- TP_mergeYM_sites(res2)
-info2 <- info[abs(year(date) - year(date_year)) <= 1, ][Idc != "No  ", ]
+info2 <- info %>% TP_high_conf()
 info2
 # sites_adj <- info2[, .N, .(site)][, site]
 
@@ -86,8 +46,6 @@ plot_output(r_year$data, "year.pdf", show = TRUE)
 ```
 
 ```{r}
-## 进一查找参考站的情况
-# 加载参考站数据
 load("Z:/GitHub/rpkgs/RHtestsHelper/OUTPUT/ChinaHI/RHtests_v20230328_RH_avg_st_refer.rda")
 ```
 

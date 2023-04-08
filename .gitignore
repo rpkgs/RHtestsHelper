@@ -16,3 +16,4 @@ OUTPUT/example*/
 *.ipynb
 log*
 debug
+.vscode

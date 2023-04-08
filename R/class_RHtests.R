@@ -104,16 +104,16 @@ merge_refer2 <- function(df, l_Ref_day, l_noRef_day, varname = "RH_avg") {
 
 query_fileList <- function(
     varname = "RH_avg",
-    version = "v20230331",
-    version_ref = "v20230403") {
+    version = "v20230408",
+    version_ref = "v20230408") {
   
   f_HomoInfo  <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_siteHomoInfo.csv")
   f_stRef     <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_st_refer.rda")
   f_cpt       <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_cpt.meanvar.fst")
-  f_noRef_mon <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.fst")
-  f_noRef_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.fst")
+  f_noRef_mon <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.RDS")
+  f_noRef_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.RDS")
 
-  f_Ref_day   <- glue("OUTPUT/ChinaHI/RHtests_{version_ref}_{varname}_withRef_daily.fst")
+  f_Ref_day   <- glue("OUTPUT/ChinaHI/RHtests_{version_ref}_{varname}_withRef_daily.RDS")
   f_final     <- glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_RHtests_{version_ref}_{varname}.fst")
 
   list(

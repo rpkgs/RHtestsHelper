@@ -12,7 +12,7 @@ homogenize_monthly <- function(df, st_moveInfo, sites, varname, ..., .parallel =
   
   `%dof%` <- get_dof(.parallel) # get do function
   res <- foreach(sitename = sites, i = icount()) %dof% {
-    runningId(i)
+    runningId(i, 10)
     tryCatch({
       l = get_Input(df, sitename, varname)
       

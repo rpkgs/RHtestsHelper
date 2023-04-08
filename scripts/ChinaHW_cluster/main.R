@@ -80,12 +80,13 @@ main_RHtests_met2481 <- function(
     ### 2.1. 挑选参考站
     # if (!file.exists(f_stRef)) {
       load(f_stRef)
-      # mat_mon = convert_day2mon(df, varname)
-      # if (!isTRUE(all.equal(colnames(mat_mon), as.character(st$site)))) {
-      #   stop("check site names order first!")
-      # }
-      # ok("Finding Reference sites ...")
-      # st_refs <- st_refer(st, mat_mon, nsite = NULL, .parallel = TRUE)
+      
+      mat_mon = convert_day2mon(df, varname)
+      if (!isTRUE(all.equal(colnames(mat_mon), as.character(st$site)))) {
+        stop("check site names order first!")
+      }
+      ok("Finding Reference sites ...")
+      st_refs <- st_refer(st, mat_mon, nsite = NULL, .parallel = TRUE)
 
       # 单纯更新`st_refer_opt`即可
       ## TODO: 参考站选取

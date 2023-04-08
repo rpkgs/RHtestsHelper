@@ -96,8 +96,8 @@ homo_withRef <- function(site_target, df_day, st_refs, siteHomoInfo, nmax = 5, .
   d = l$Ref
   metadata <- get_metadata(d, site_target)
 
-  tryCatch({
-    r <- homogenize.wRef(d, metadata)
+  r <- tryCatch({
+    homogenize.wRef(d, metadata)
   }, error = function(e) {
     message(sprintf("[%s] %s", site_target, e$message))
   })
