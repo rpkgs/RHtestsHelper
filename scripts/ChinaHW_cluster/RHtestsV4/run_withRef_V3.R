@@ -5,15 +5,9 @@ library(tidymet)
 library(tidyfst)
 devtools::load_all()
 # devtools::load_all("../RHtests.R")
+source("scripts/ChinaHW_cluster/main.R")
 ErrorMSG = ""
 
-get_CPTadjust_Inputs <- function(df_org, df_adj) {
-  sites_adj <- query_site(df_adj)
-  df_org <- rbind(
-    df_org[site %!in% sites_adj, ],
-    df_adj[, .(site, date, value = ecdf)]
-  ) # 采用ecdf的结果
-}
 
 # ------------------------------------------------------------------------------
 #' main_RHtests_met2481
@@ -26,15 +20,9 @@ main_RHtests_met2481 <- function(
   version_ref = "v20230403", ...,
   nmax = 5)
 {
-  fs = query_fileList(varname, version, version_ref)
   ## 1. 读取数据
-  df_org <- select(df, all_of(c("site", "date", varname))) %>% 
-    set_names(c("site", "date", "value"))
-  if (varname == "RH_avg") {
-    df_adj = import_fst(fs$cpt)
-    df_org = get_CPTadjust_Inputs(df_org, df_adj)
-  }
-  
+  fs = query_fileList(varname, version, version_ref)
+  df_org = get_DF_INPUTS(df, varname, fs)
   siteHomoInfo = fread(fs$homoInfo)
   
   ## 2.2. 带有参考站的（withRef）均一化检测
@@ -46,15 +34,19 @@ main_RHtests_met2481 <- function(
       st = st_met2481[site %in% sites_long]
       mat_mon = convert_day2mon(df_org[site %in% sites_long])
       st_refs <- st_refer(st, mat_mon, nsite = NULL, .parallel = TRUE)
-      saveRDS(st_refs, fs$stRef)
+      export(st_refs, fs$stRef)
     } else {
-      st_refs = readRDS(fs$stRef)
+      st_refs = import(fs$stRef)
     }
     
     df_day <- convert_df2day(df_org)
-    res_ref <- homo_withRef_multi(df_day, st_refs, siteHomoInfo, nmax = nmax, ..., debug = FALSE)
-    saveRDS(res_ref, file = fs$withRef_day)
+
+    l_Ref_day <- homo_withRef_multi(df_day, st_refs, siteHomoInfo, nmax = nmax, debug = FALSE)
+    # df_ref <- l_Ref_day %>% getHomoData(extract.day = TRUE)    
+    # export(df_ref, fs$withRef_day_data)
+    export(l_Ref_day, fs$withRef_day)
   }
+  merge_final(fs)
 }
 
 ## 3. 数据清洗
@@ -67,7 +59,6 @@ InitCluster(30)
 
 f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
 df <- import_fst(f_input)
-
 # date <- gsub("-", "", format(Sys.Date()))
 # version <- glue("RHtests_v{date}")
 # version <- "RHtests_v20230228"

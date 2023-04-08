@@ -69,3 +69,16 @@ rename_vars <- function(d, new, old) {
     y
   else x
 }
+
+export <- function (x, path, ...) {
+  ext <- tools::file_ext(path) %>% tolower()
+  if (ext == "rda") {
+    save(x, file = path, ...)
+  } else if (ext == "rds") {
+    saveRDS(x, path, ...)
+  } else if (ext == "fst") {
+    fst::write_fst(x, path, ...)
+  } else if (ext == "csv") {
+    fwrite(x, path, ...)
+  }
+}

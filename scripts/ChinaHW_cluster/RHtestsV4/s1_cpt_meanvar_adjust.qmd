@@ -9,7 +9,7 @@ Ipaper::set_dirRoot()
 Ipaper::set_jupyter()
 
 library(data.table)
-library(tidyfst)
+# library(tidyfst)
 library(Ipaper)
 library(purrr)
 library(rtrend)
@@ -21,11 +21,10 @@ library(gg.layers)
 library(rcolors)
 library(patchwork)
 library(changepoint)
+library(hydroTools)
 # source("scripts/ChinaHW_cluster/main_vis.R", encoding = "UTF-8")
 # source('scripts/ChinaHW_cluster/均一化分析/main_trend.R')
 
-f_org <- "OUTPUT/ChinaHI/Trend/trend_original.rda"
-f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
 devtools::load_all()
 ```
 
@@ -71,7 +70,7 @@ plot_TPyear <- function(info_TP) {
 ```{r}
 #| vscode: {languageId: r}
 f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
-df <- import_fst(f_input)
+df <- import(f_input)
 df %<>% mutate(q_avg = RH2q(RH_avg, Tair_avg, Pa_avg))
 
 df_org <- df[, .(site, date, value = RH_avg)]
@@ -101,16 +100,18 @@ print(info)
 df_org <- df[, .(site, date, value = RH_avg)]
 l_org <- df_org %>% dt_day2year()
 df_mon <- l_org$mon %>% interp_hisavg_month()
-info_TP <- detect_TP_cpt(df_mon) # 采用monthly数据检测TP
+info_TP <- detect_TP_cpt(df_mon, fun = cpt.mean) # 采用monthly数据检测TP
 
-df_adj <- homo_cpt(df_org, info_TP, nyear = 5)
-# export_fst(df_adj, "OUTPUT/ChinaHI/RHtests_v20230331_RH_avg-cpt_meanvar.fst")
+# info_TP[year(TP) %in% c(2000:2010), ]
+nyear = 5
+df_adj <- homo_cpt(df_org, info_TP, nyear = nyear)
+export_fst(df_adj, "OUTPUT/ChinaHI/RHtests_v20230408_RH_avg_cpt.meanvar.fst")
 # 只修正了786个自动化站点
 
 # 理想情况，摆脱极端干旱与极端湿润的年份
 d_05 = get_RegionalMean(df_adj)
 p = plot_RegionalMean(d_05)
-write_fig(p, 'Figure1_RH_adjusted_by_cpt_5y.pdf', 10, 5, show = F)
+write_fig(p, glue('Figure1_RH_adjusted_by_cpt_{nyear}y.pdf'), 10, 5, show = F)
 ```
 
 ### 1.1.1. 突变前后的mean, sd

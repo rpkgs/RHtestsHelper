@@ -27,14 +27,10 @@ f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
 # InitCluster(10)
 f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
 df <- import_fst(f_input)
-# main_RHtests_met2481("Tair_max")
-# main_RHtests_met2481("Tair_avg")
-# main_RHtests_met2481("RH_avg")
 varnames <- c("RH_avg", "Tair_avg", "Tair_max", "Tair_min") %>%
   set_names(., .)
 
-.data <- df %>% select(site, date, all_of(varnames))
-data <- fix_uncontinue(.data) # 每年都是完整的序列
+data <- df %>% select(site, date, all_of(varnames))
 
 aggregate_year(data, varnames, fout = f_org)
 ```
@@ -46,7 +42,6 @@ fs = dir2("./OUTPUT/ChinaHI/", "*.csv")
 lst = map(fs, fread)
 .data = reduce(lst, merge, all = TRUE, by = c("site", "date"))
 .data$date %<>% as.Date()
-data <- fix_uncontinue(.data) # 每年都是完整的序列
 
 aggregate_year(data, varnames, fout = f_homo)
 ```
@@ -177,14 +172,12 @@ write_fig(p, 'Rplot.pdf', 10, 5)
 ```
 
 
-
 ## 检查错误
 ```{r}
 # 321个显著的站点，下降的趋势是虚假的
 sites_sign = pdat_final[type_homo == "Homogenized - Raw" & pvalue <= 0.05, site]
 dat[site %in% sites_sign & (sign(Raw) * sign(Homogenized) < 0), ]
 ```
-
 
 ```{r}
 names_ex = c("河曲", "瓜州", "通道")

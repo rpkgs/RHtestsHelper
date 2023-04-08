@@ -12,7 +12,7 @@ RHtests_rm_empty <- function(res) {
 #' getData_day(l)
 #' getData_day()
 getHomoData <- function(lst, extract.day = FALSE) {
-  if (is.character(lst)) lst %<>% readRDS()
+  if (is.character(lst)) lst %<>% import()
   if (extract.day) lst = map(lst, ~ .x$day)
 
   inds <- map(lst, ~ .$TP) %>% which.notnull()
@@ -65,9 +65,24 @@ query_siteHomoInfo <- function(res, TP = NULL) {
   info
 }
 
+# global variable: 
+merge_final <- function(fs) {
+  # fs <- query_fileList(varname)
+  if (!file.exists(fs$out)) {
+    df_org <- get_DF_INPUTS(df, varname, fs)
+
+    l_noRef_day <- import(fs$noRef_day)
+    l_Ref_day <- import(fs$withRef_day)
+
+    df_final <- merge_refer2(df_org, l_Ref_day, l_noRef_day)
+    export(df_final, fs$out)
+  }
+}
 
 ## merge noref and withref
-merge_refer2 <- function(df, l_Ref_day, l_noRef_day, varname = "RH_avg") {
+#' merge_refer2
+#' @param df with the column of `c("site", "date", "value")`
+merge_refer2 <- function(df, l_Ref_day, l_noRef_day, ...) {
   if (is.character(l_Ref_day)) l_Ref_day %<>% readRDS()
   if (is.character(l_noRef_day)) l_noRef_day %<>% readRDS()
 
@@ -92,10 +107,10 @@ merge_refer2 <- function(df, l_Ref_day, l_noRef_day, varname = "RH_avg") {
 
   ## merge the unfixed and fixed
   df_org <- df[site %in% as.integer(sites_org), ] %>%
-    select(all_of(c("site", "date", varname))) %>%
-    set_names(c("site", "date", "value")) %>%
+    # select(all_of(c("site", "date", varname))) %>%
+    # set_names(c("site", "date", "value")) %>%
     mutate(base = value, .before = value)
-
+  
   # TODO: error here
   df_final <- list("Original" = df_org, NoRef = df_noref, Ref = df_ref) %>%
     melt_list("type_homo")
@@ -108,13 +123,15 @@ query_fileList <- function(
     version_ref = "v20230408") {
   
   f_HomoInfo  <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_siteHomoInfo.csv")
-  f_stRef     <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_st_refer.rda")
+  f_stRef     <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_st_refer.RDS")
   f_cpt       <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_cpt.meanvar.fst")
   f_noRef_mon <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_monthly.RDS")
   f_noRef_day <- glue("OUTPUT/ChinaHI/RHtests_{version}_{varname}_noRef_daily.RDS")
-
-  f_Ref_day   <- glue("OUTPUT/ChinaHI/RHtests_{version_ref}_{varname}_withRef_daily.RDS")
-  f_final     <- glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_RHtests_{version_ref}_{varname}.fst")
+  
+  f_Ref_day      <- glue("OUTPUT/ChinaHI/RHtests_{version_ref}_{varname}_withRef_daily.RDS")
+  f_Ref_day_TP   <- glue("OUTPUT/ChinaHI/RHtests_{version_ref}_{varname}_withRef_daily.RDS")
+  f_Ref_day_data <- glue("OUTPUT/ChinaHI/RHtests_{version_ref}_{varname}_withRef_daily.fst")
+  f_final        <- glue("OUTPUT/ChinaHI/OUTPUT_mete2481_1961-2022_RHtests_{version_ref}_{varname}.fst")
 
   list(
     homoInfo    = f_HomoInfo,
@@ -122,7 +139,9 @@ query_fileList <- function(
     stRef       = f_stRef,
     noRef_mon   = f_noRef_mon,
     noRef_day   = f_noRef_day,
-    withRef_day = f_Ref_day,
-    out         = f_final
+    withRef_day      = f_Ref_day_TP,
+    withRef_day_TP   = f_Ref_day_TP,
+    withRef_day_data = f_Ref_day_data,
+    out              = f_final
   )
 }

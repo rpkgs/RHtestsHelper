@@ -5,44 +5,11 @@ fun_aggregate <- function(x) {
   )
 }
 
-aggregate_year <- function(df, varnames, fout = NULL, ...) {
-  # 1. 合并到月是，每个月缺测值不能超过三个
-  # 2. 合并到年时，月数据不能有缺测
-  varnames %<>% intersect(colnames(df)) %>% set_names(., .)
-
-  lst_mon <- foreach(varname = varnames, i = icount()) %do% {
-    runningId(i)
-    dat <- select(df, site, date, all_of(varname)) %>%
-      set_names(c("site", "date", "value"))
-    # d = dat[1:1e4, ]
-    # ans = dat[, cal_MonMean(x, date), ]
-    ans <- dat[, .(
-      value = mean(value, na.rm = TRUE),
-      nmiss = sum(is.na(value))
-    ), .(site, date = date_ym(date))]
-  }
-  map_dbl(lst_mon, ~ nrow(.x[nmiss > 3, ]) / nrow(.x)) * 100 %>% print()
-  ## 删除的比例不超过1%
-  #    RH_avg  Tair_avg  Tair_max  Tair_min
-  # 0.8684176 0.7966193 0.7869323 0.7977020
-
-  lst_year <- foreach(varname = varnames, dat = lst_mon, i = icount()) %do% {
-    runningId(i)
-    ans <- dat[nmiss <= 3, .(
-      value = mean(value, na.rm = TRUE),
-      nmiss = 12 - .N
-    ), .(site, year(date))]
-    # 去除有缺测的站点
-    ans <- ans[nmiss == 0, 1:3] # %>% set_names(c("site", "date", varname))
-    # 去除数据长度过短的站点
-    # 最长的数据有62年，
-    info <- ans[, .N, site]
-    # info[N >= 55, ] # 至少有55年的数据
-    res <- merge(ans, info[N >= 55, .(site)])
-  }
-  save(lst_mon, lst_year, l_trend, df, file = fout)
-  # list(mon = lst_mon, year = lst_year)
-}
+# save(lst_mon, lst_year, l_trend, df, file = fout)
+# aggregate_year <- function(df, varnames, fout = NULL, ...) {
+#   # 1. 合并到月是，每个月缺测值不能超过三个
+#   # 2. 合并到年时，月数据不能有缺测
+# }
 
 cal_trend <- function(lst_year, year_max = 2022, ...) {
   l_trend <- foreach(dat = lst_year, i = icount()) %do% {

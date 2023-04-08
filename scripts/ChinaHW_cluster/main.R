@@ -2,11 +2,11 @@ library(Ipaper)
 library(lubridate)
 library(RHtests)
 library(tidymet)
-library(tidyfst)
+# library(tidyfst)
 ErrorMSG = ""
 
 devtools::load_all()
-devtools::load_all("../RHtests.R")
+# devtools::load_all("../RHtests.R")
 
 # 有5个站点出现错误。
 # # [data.table]:
@@ -121,12 +121,13 @@ main_RHtests_met2481 <- function(
         message(sprintf("[%d] %s", i, e$message))
       })
     }
-    saveRDS(res_ref, file = f_Ref_day)
+    export(res_ref, file = f_Ref_day)
   } else {
-    res_ref <- readRDS(f_Ref_day)
+    res_ref <- import(f_Ref_day)
   }
   
   ## 3. 数据清洗
   df_final = merge_refer2(df, f_Ref_day, f_noRef_day, varname)
-  fwrite(df_final, f_final)
+  export(df_final, f_final)
+  merge_final(fs)
 }

@@ -1,0 +1,147 @@
+```{r}
+# source("scripts/ChinaHW_cluster/main.R")
+library(data.table)
+# library(tidyfst)
+library(Ipaper)
+library(purrr)
+library(rtrend)
+library(gg.layers)
+library(tidymet)
+library(sf)
+library(ggplot2)
+library(gg.layers)
+library(rcolors)
+library(patchwork)
+
+# source("scripts/ChinaHW_cluster/main_vis.R", encoding = "UTF-8")
+source('scripts/ChinaHW_cluster/main.R')
+source('scripts/ChinaHW_cluster/main_trend.R')
+
+#| vscode: {languageId: r}
+get_RegionalMean <- function(df) {
+  d_yearly = df %>% get_yearly("site")
+  d_region = dt_mean(d_yearly %>% select(-site), .(year))
+  # d = d_region %>% melt("year")
+  d_region
+}
+
+# f_org <- "OUTPUT/ChinaHI/Trend/trend_original.rda"
+# f_homo <- "OUTPUT/ChinaHI/Trend/trend_homo.rda"
+```
+
+```{r}
+# 1,626站点，cpt得到修复
+f_input <- "data-raw/INPUT/INPUT_met2474_Tmax&RHmax_for_HImax_1951-2022_V2.fst"
+df <- import(f_input)
+df_raw = df[, .(site, date, value = RH_avg)]
+df_Li2020 = import("data-raw/INPUT/Homo_RH_daily_746st_1960_2017_v20230405.fst")
+
+varname = "RH_avg"
+fs <- query_fileList(varname)
+df_org <- get_DF_INPUTS(df, varname, fs)
+
+l_noRef_day <- import(fs$noRef_day)
+l_Ref_day <- import(fs$withRef_day)
+
+df_ref <- l_Ref_day %>% getHomoData(extract.day = TRUE)
+df_noref <- l_noRef_day %>% getHomoData(extract.day = FALSE)
+df_final <- import(fs$out)
+```
+
+
+```{r}
+sites = df_Li2020 %>% query_site()
+
+lst = listk(
+  Raw = df_raw[site %in% sites, ],
+  cpt = df_org[site %in% sites, ],
+  Li2020 = df_Li2020,
+  noRef = df_noref[site %in% sites, .(site, date, value)], 
+  Ref = df_ref[site %in% sites, .(site, date, value)],
+  Final = df_final[site %in% sites, .(site, date, value)]
+)
+
+# map(lst, query_site) %>% str()
+lst_region = map(lst, get_RegionalMean)
+d_region = melt_list(lst_region, "type_source")
+```
+
+```{r}
+p = ggplot(d_region[type_source %in% c("Raw", "cpt", "Li2020", "Final")], 
+    aes(year, value, color = type_source, shape = type_source)) + 
+  geom_point() + 
+  geom_line()
+
+write_fig(p, 'Figure2_final_RHtestsV4.pdf', 10, 5, show = FALSE)
+```
+
+```{r}
+sites_ref = l_Ref_day %>% RHtests_rm_empty() %>% names()
+sites_noref = l_noRef_day %>% rm_empty() %>% names()
+
+length(sites_ref)
+length(sites_noref)
+
+length(l_noRef_day)
+length(l_Ref_day)
+
+match2(sites_noref, sites_ref)
+match2(names(l_noRef_day), names(l_Ref_day))
+
+df_final <- import_fst(fs$out)
+# df_year_org <- df[, .(site, date, value = RH_avg)] %>% dt_day2year() %>% .$year
+# merge_final(varname)
+# df_final = import_fst(fs$out)
+```
+
+
+```{r}
+sites = query_site(df_noref)
+d_ref = df_ref %>% select(-site) %>% get_yearly()
+d_noref = df_noref %>% select(-site) %>% get_yearly()
+dat = cbind(d_ref %>% rename(ref = value), noref = d_noref$value)
+
+pdat = melt(dat, c("year"))
+```
+
+```{r}
+## 最后一次
+# ggplot(pdat, aes(year, value, color = variable)) + 
+#   geom_line()
+```
+
+```{r}
+info = df_final[, .N, .(site, type_homo)][, .(site, type_homo)]
+info[, .N, type_homo]
+
+data = list(
+  Raw = dt_day2year(df_final[, .(site, date, value = base)])$year, 
+  Ref = dt_day2year(df_final[, .(site, date, value)])$year
+) %>% melt_list("type_source")
+
+data %<>% merge(info, .)
+```
+
+```{r}
+d_region = df_final %>% select(-type_homo, site) %>% get_yearly()
+
+ggplot(d_region, aes(year, value)) + 
+  geom_line(color = "red") + 
+  geom_line(aes(y = base), color = "black")
+```
+
+```{r}
+# d_year = select(data, -site) %>% dt_mean(.(type_homo, type_source, year))
+p = ggplot(d_year, aes(year, value, color = type_source)) + 
+  geom_line() + 
+  facet_wrap(~type_homo)
+write_fig(p, 'Rplot.pdf', 10, 5, show = F)
+```
+
+<!-- 1 Original   1016
+2 NoRef       244
+3 Ref        1214 -->
+
+## TODO: 应该再比较一下无参考站的结果。
+
+测试最后一步，homo.withRef的结果。

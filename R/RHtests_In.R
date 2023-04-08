@@ -4,6 +4,23 @@
 #     cbind(d[, ..varnames])
 # }
 
+get_DF_INPUTS <- function(df, varname = "RH_avg", fs) {
+  df_org <- select(df, all_of(c("site", "date", varname))) %>%
+    set_names(c("site", "date", "value"))
+  
+  if (varname == "RH_avg") {
+    df_adj = import(fs$cpt)
+    sites_adj <- query_site(df_adj)
+
+    df_org <- rbind(
+      df_org[site %!in% sites_adj, ],
+      df_adj[, .(site, date, value = ecdf)]
+    ) # 采用ecdf的结果
+  }
+  df_org
+}
+
+
 #' @export
 get_metadata <- function(d, sitename) {
   date_begin <- first(d$date)
